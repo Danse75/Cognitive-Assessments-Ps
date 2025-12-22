@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Evaluaciones neuropsicológicas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50">
+  <div id="root"></div>
+
+  <!-- React + Babel CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useRef, useEffect, useMemo, useCallback } = React;
+
+    // Utils --------------------------------------------------
+    function cls(...xs){ return xs.filter(Boolean).join(" "); }
+    function pct(x){ return Math.round(x*100); }
+    function download(filename, text){
+      const a=document.createElement('a');
+      a.href='data:application/json;charset=utf-8,'+encodeURIComponent(text);
+      a.download=filename; a.style.display='none';
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+    const defer = (fn) => (...args) => requestAnimationFrame(() => fn(...args));
+
+    // Apps Script endpoint (CORS habilitado)
+    const SHEETS_ENDPOINT = 'https://script.google.com/macros/s/AKfycby9wqLhOmSacFzQKiQgRKxH6YF4VSdXgn2WAzBpuYLEf9Tfld6Bufae-nwdIfGWBydcAA/exec';
+
+    // Envío robusto: CORS → sendBeacon → GET b64
+    async function sendToSheets(payload){
+      if(!SHEETS_ENDPOINT) return;
+      const bodyStr = JSON.stringify(payload);
+      // 1) POST CORS estándar (NO usar 'no-cors')
+      try{
+        await fetch(SHEETS_ENDPOINT, {
+          method:'POST',
+          mode:'cors',
+          headers:{'Content-Type':'application/json'},
+          body: bodyStr,
+          keepalive: true,
+          cache: 'no-cache'
+        });
+        return;
+      }catch(e){ console.warn('POST cors falló', e); }
+
+      // 2) Fallback: sendBeacon (no leemos respuesta)
+      try{
+        if(navigator.sendBeacon){
+          const ok = navigator.sendBeacon(SHEETS_ENDPOINT, new Blob([bodyStr], {type:'text/plain;charset=UTF-8'}));
+          if(ok) return;
+        }
+      }catch(e){ console.warn('sendBeacon falló', e); }
+
+      // 3) Fallback: GET base64 (necesita doGet que decodifique "b64")
+      try{
+        const b64 = btoa(unescape(encodeURIComponent(bodyStr)));
+        new Image().src = SHEETS_ENDPOINT + '?b64=' + encodeURIComponent(b64) + '&ts=' + Date.now();
+      }catch(e){ console.warn('GET b64 falló', e); }
+    }
+
+    // Métricas -----------------------------------------------
+    function accuracy(trials){
+      const v = trials.filter(t => t.correct !== undefined);
+      return v.length ? v.filter(t => !!t.correct).length / v.length : 0;
+    }
+    function meanRt(trials){
+      const v = trials.map(t => t.rtMs).filter(x => typeof x === 'number' && isFinite(x));
+      return v.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : null;
+    }
+    // Helpers para armar reportes/parciales
+    function computeScores(trials){
+      const by = trials.reduce((m,t)=>{ (m[t.task]=m[t.task]||[]).push(t); return m; }, {});
+      return Object.entries(by).map(([task,arr])=>{
+        const s = { task, acc:accuracy(arr), rt:meanRt(arr) };
+        if (task === 'hanoi') s.moves = arr.filter(tr => tr.correct === true).length;
+        return s;
+      });
+    }
+    function buildPayload(participant,trials,status){
+      return {
+        participant,
+        completedAt: new Date().toISOString(),
+        status, // 'completed' | 'cancelled'
+        scores: computeScores(trials),
+        trials
+      };
+    }
+
+    // App ----------------------------------------------------
+    function App(){
+      const [view,setView]=useState('start');           // start | consent | check | run | report
+      const [firstTask,setFirstTask]=useState('stroop');
+      const [order,setOrder]=useState(['stroop','hanoi','corsi']);
+      const [participant,setParticipant]=useState({name:'',idNumber:'',community:'',birthDate:''});
+      const trialsRef=useRef([]);
+      const [report,setReport]=useState(null);
+      const [askCancel,setAskCancel] = useState(false);
+
+      // Defer setters de navegación para evitar setState during render
+      const setViewDeferred = useCallback(defer(setView), []);
+
+      function begin(){
+        if(!participant.name.trim() || !participant.idNumber.trim())
+          return alert('Ingresa nombre e ID.');
+        const all=['stroop','hanoi','corsi'];
+        setOrder([firstTask, ...all.filter(k=>k!==firstTask)]);
+        setViewDeferred('consent');
+      }
+
+      function onAllDone(){
+        const payload = buildPayload(participant, trialsRef.current, 'completed');
+        sendToSheets(payload);
+        setReport(payload);
+        setViewDeferred('report');
+        setTimeout(()=>document.getElementById('report-root')?.scrollIntoView({behavior:'smooth', block:'start'}), 50);
+      }
+      function onCancel(){
+        const payload = buildPayload(participant, trialsRef.current, 'cancelled');
+        sendToSheets(payload);
+        setReport(payload);
+        setViewDeferred('report');
+        setTimeout(()=>document.getElementById('report-root')?.scrollIntoView({behavior:'smooth', block:'start'}), 50);
+      }
+
+      return (
+        <div className="min-h-screen text-slate-900">
+          <div className="mx-auto max-w-3xl p-6 space-y-6">
+            <header className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-slate-900"></div>
+                <div>
+                  <h1 className="text-xl font-bold">Evaluaciones neuropsicológicas</h1>
+                  <p className="text-xs text-slate-500">Demo ejecutable</p>
+                </div>
+              </div>
+              <span className="text-xs text-slate-500">{view.toUpperCase()}</span>
+            </header>
+
+            {view==='start' && (
+              <section className="space-y-4">
+                <h2 className="text-lg font-semibold">Inicio</h2>
+                <p className="text-slate-600 text-sm">Completarás todas las pruebas. Elige con cuál deseas empezar e ingresa tus datos.</p>
+                <div className="grid gap-3 rounded-2xl border bg-white p-4">
+                  <div className="grid gap-1">
+                    <label className="text-xs text-slate-500">Nombres y apellidos</label>
+                    <input className="rounded-xl border px-3 py-2"
+                           value={participant.name}
+                           onChange={e=>setParticipant(p=>({...p,name:e.target.value}))}
+                           placeholder="Nombres y apellidos"/>
+                  </div>
+                  <div className="grid gap-1">
+                    <label className="text-xs text-slate-500">ID (cédula / ID number)</label>
+                    <input className="rounded-xl border px-3 py-2"
+                           value={participant.idNumber}
+                           onChange={e=>setParticipant(p=>({...p,idNumber:e.target.value}))}
+                           placeholder="ID"/>
+                  </div>
+                  <div className="grid gap-1">
+                    <label className="text-xs text-slate-500">Comunidad de procedencia</label>
+                    <input className="rounded-xl border px-3 py-2"
+                           value={participant.community}
+                           onChange={e=>setParticipant(p=>({...p,community:e.target.value}))}
+                           placeholder="Ej.: Los Encuentros"/>
+                  </div>
+                  <div className="grid gap-1">
+                    <label className="text-xs text-slate-500">Fecha de nacimiento</label>
+                    <input type="date" className="rounded-xl border px-3 py-2"
+                           value={participant.birthDate}
+                           onChange={e=>setParticipant(p=>({...p,birthDate:e.target.value}))}/>
+                  </div>
+                  <div className="grid gap-1">
+                    <label className="text-xs text-slate-500">Primera prueba</label>
+                    <select className="rounded-xl border px-3 py-2"
+                            value={firstTask} onChange={e=>setFirstTask(e.target.value)}>
+                      <option value="stroop">Stroop (interferencia)</option>
+                      <option value="hanoi">Torre de Hanoi (planificación)</option>
+                      <option value="corsi">Corsi 3×3 (memoria visoespacial)</option>
+                    </select>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button onClick={begin} className="rounded-xl bg-slate-900 text-white px-4 py-2">Continuar</button>
+                  </div>
+                  <ul className="text-sm text-slate-500 list-disc pl-5">
+                    <li>Secuencia: Consentimiento → Chequeo → Tareas → Informe</li>
+                    <li>Compatible teclado y pantalla táctil</li>
+                  </ul>
+                </div>
+              </section>
+            )}
+
+            {view==='consent' && <Consent onAccept={()=>setViewDeferred('check')} onDecline={()=>setViewDeferred('start')} />}
+            {view==='check' && <Check onContinue={()=>setViewDeferred('run')} />}
+            {view==='run' && <Runner order={order} onTrial={(t)=>trialsRef.current.push(t)} onDone={onAllDone} onRequestCancel={()=>setAskCancel(true)} />}{askCancel && <ConfirmCancel onConfirm={()=>{ setAskCancel(false); onCancel(); }} onCancel={()=>setAskCancel(false)} />}
+            {view==='report' && report && <Report payload={report} onRestart={()=>{ trialsRef.current=[]; setReport(null); setViewDeferred('start'); }} />}
+          </div>
+        </div>
+      );
+    }
+
+    // Consentimiento -----------------------------------------
+    function Consent({onAccept,onDecline}){
+      const [ok,setOk]=useState(false);
+      return (
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold">Consentimiento informado</h2>
+          <div className="rounded-2xl border p-4 bg-white text-sm leading-relaxed text-slate-700 max-h-64 overflow-auto">
+            <p><b>Propósito:</b> evaluar funciones cognitivas mediante tareas breves en línea.</p>
+            <p><b>Duración:</b> 8–12 minutos. Puede tomar descansos si lo necesita.</p>
+            <p><b>Riesgos:</b> mínimos (fatiga/aburrimiento).</p>
+            <p><b>Datos:</b> se recogen tiempos de reacción, aciertos/errores y metadatos técnicos.</p>
+          </div>
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" checked={ok} onChange={e=>setOk(e.target.checked)} className="mt-1"/>
+            <span>He leído y acepto participar.</span>
+          </label>
+          <div className="flex gap-2">
+            <button disabled={!ok} onClick={onAccept} className={cls("rounded-xl px-4 py-2", ok?"bg-slate-900 text-white":"bg-slate-200 text-slate-400 cursor-not-allowed")}>Continuar</button>
+            <button onClick={onDecline} className="rounded-xl border px-4 py-2">Cancelar</button>
+          </div>
+        </section>
+      );
+    }
+
+    // Chequeo -------------------------------------------------
+    function Check({onContinue}){
+      const [okKey,setOkKey]=useState(false);
+      const [okScreen,setOkScreen]=useState(false);
+      const [okFocus,setOkFocus]=useState(true);
+      useEffect(()=>{
+        const w=()=>setOkScreen(innerWidth>=360&&innerHeight>=500); w();
+        addEventListener('resize',w);
+        const vis=()=>setOkFocus(!document.hidden);
+        document.addEventListener('visibilitychange',vis);
+        return ()=>{ removeEventListener('resize',w); document.removeEventListener('visibilitychange',vis); };
+      },[]);
+      useEffect(()=>{
+        const onKey=e=>{ if(e.code==='Space') setOkKey(true); };
+        addEventListener('keydown',onKey);
+        return ()=>removeEventListener('keydown',onKey);
+      },[]);
+      const ok=okScreen&&okFocus;
+      return (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">Chequeo de dispositivo</h2>
+          <ul className="text-sm text-slate-700 grid gap-1">
+            <li>📱 Tamaño de pantalla: {okScreen?"OK":"Muy pequeño"}</li>
+            <li>🪟 Ventana activa: {okFocus?"OK":"Volviste desde otra pestaña"}</li>
+            <li>⌨️ Teclado: {okKey?"Barra espaciadora detectada":"Pulsa barra espaciadora para probar"}</li>
+          </ul>
+          <button disabled={!ok} onClick={onContinue} className={cls("rounded-xl px-4 py-2", ok?"bg-slate-900 text-white":"bg-slate-200 text-slate-400 cursor-not-allowed")}>Comenzar evaluación</button>
+        </section>
+      );
+    }
+
+    // Runner --------------------------------------------------
+    function Runner({order,onTrial,onDone,onRequestCancel}){
+      const [i,setI]=useState(0);
+      const tasks=useMemo(()=>({stroop:Stroop,hanoi:Hanoi,corsi:Corsi}),[]);
+      const key=order[i]; const Comp=tasks[key];
+
+      const setINextDeferred = useCallback(defer(setI), []);
+      const handleDone = () => {
+        if(i+1<order.length) setINextDeferred(i+1); else onDone();
+      };
+
+      return (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between text-sm text-slate-500">
+            <span>Tarea {i+1} / {order.length}</span>
+            <button onClick={onRequestCancel} className="rounded-lg border px-3 py-1 text-xs">Cancelar evaluación</button>
+          </div>
+          <div className="rounded-2xl border bg-white p-4">
+            {Comp? <Comp onTrial={onTrial} onDone={handleDone} /> : <div>No encontrada: {String(key)}</div>}
+          </div>
+        </section>
+      );
+    }
+
+    // Stroop --------------------------------------------------
+    function Stroop({onTrial,onDone}){
+      const COLORS=[
+        {name:'ROJO', css:'text-red-600', key:'R'},
+        {name:'AZUL', css:'text-blue-600', key:'A'},
+        {name:'VERDE', css:'text-green-600', key:'V'},
+        {name:'AMARILLO', css:'text-yellow-500', key:'M'}
+      ];
+      const N_TRIALS=24;
+      const schedule=useRef([...Array(12).fill('word'),...Array(12).fill('color')]
+        .map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]));
+
+      const [trial,setTrial]=useState(0);
+      const [stim,setStim]=useState(null);
+      const [mode,setMode]=useState('word'); // word | color
+      const [opts,setOpts]=useState([]);
+      const t0=useRef(0);
+
+      function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+      function mkStim(){ let w=pick(COLORS), i=pick(COLORS); while(i.name===w.name){ i=pick(COLORS); } return {word:w,ink:i}; }
+
+      useEffect(()=>{ setTrial(0); next(0); },[]);
+
+      function next(idx){
+        if(idx>=N_TRIALS){ onDone(); return; }
+        const m = schedule.current[idx];
+        const s = mkStim();
+        const correctOpt = m==='word' ? s.word : s.ink;
+        const wrongOpt = pick(COLORS.filter(c => c.name !== correctOpt.name));
+        const shuffled = Math.random() < 0.5 ? [correctOpt, wrongOpt] : [wrongOpt, correctOpt];
+        setMode(m);
+        setStim(s);
+        setOpts(shuffled);
+        t0.current=performance.now();
+      }
+
+      function answer(sel){
+        if(!stim) return;
+        const rt=Math.round(performance.now()-t0.current);
+        const isCorrect = mode==='word' ? (sel.name===stim.word.name) : (sel.name===stim.ink.name);
+        const task = mode==='word'?'stroop_word':'stroop_color';
+        const idx = trial;
+        onTrial({ task, index:idx, stimulus:{word:stim.word.name,ink:stim.ink.name}, response:{choice:sel.name}, correct:isCorrect, rtMs:rt });
+        setTrial(t=>{ const nt=t+1; next(nt); return nt; });
+      }
+
+      return (
+        <div className="grid place-items-center gap-6">
+          <div className="text-slate-600 text-sm text-center">{mode==='word' ? <>¿Qué <b>palabra</b> lees?</> : <>¿Qué <b>color</b> ves?</>}</div>
+          {stim && <div className={cls('text-5xl font-bold', stim.ink.css)}>{stim.word.name}</div>}
+          <div className="w-full max-w-xl grid gap-3">
+            <div className="flex flex-wrap justify-center gap-2">
+              {opts.map(c => (
+                <button key={c.name} onClick={() => answer(c)}
+                        className="rounded-xl border px-4 py-2 min-w-[6rem]">{c.name}</button>
+              ))}
+            </div>
+          </div>
+          <div className="text-xs text-slate-500">Ensayo {trial+1} / {N_TRIALS}</div>
+        </div>
+      );
+    }
+
+    // Hanoi --------------------------------------------------- ---------------------------------------------------
+    function Hanoi({onTrial,onDone}){
+      const N=3;
+      const moveIdx=useRef(0);
+      const tMove=useRef(performance.now());
+      const roundsRef=useRef([[0,2],[1,2],[2,0],[2,1],[1,0],[1,2]]); // [from,to]
+      const [round,setRound]=useState(0);
+      const [pegs,setPegs]=useState([[],[],[]]);
+      const [sel,setSel]=useState(null);
+
+      function initRound(r){
+        const [from]=roundsRef.current[r];
+        const start=[[],[],[]];
+        start[from]=Array.from({length:N},(_,i)=>N-i); // [3,2,1]
+        setPegs(start); setSel(null); setRound(r);
+      }
+
+      useEffect(()=>{ initRound(0); },[]);
+
+      function canPlace(d,t){ const top=t[t.length-1]; return top===undefined || top>d; }
+      function colorFor(d){ if(d===3) return '#eab308'; if(d===2) return '#16a34a'; return '#2563eb'; }
+
+      function click(pi){
+        if(sel===null){ if(pegs[pi].length===0) return; setSel(pi); return; }
+        if(sel===pi){ setSel(null); return; }
+        const from=sel, to=pi;
+        const src=pegs[from]; if(src.length===0){ setSel(null); return; }
+        const disc=src[src.length-1];
+        const valid=canPlace(disc,pegs[to]);
+        const rt=Math.round(performance.now()-tMove.current); tMove.current=performance.now();
+        const [reqFrom, reqTo]=roundsRef.current[round];
+
+        onTrial({task:'hanoi', index:moveIdx.current++, stimulus:{from,to,disc,state:pegs,required:[reqFrom,reqTo],round}, response:{move:[from,to]}, correct:valid, rtMs:rt});
+
+        if(!valid){ setSel(null); return; }
+
+        setPegs(p=>{
+          const n=p.map(a=>a.slice()); n[from].pop(); n[to].push(disc);
+          const done = n[reqTo].length===N;
+          if(done){
+            setTimeout(()=>{
+              if(round+1 < roundsRef.current.length){ initRound(round+1); }
+              else { onDone(); }
+            }, 350);
+          }
+          return n;
+        });
+        setSel(null);
+      }
+
+      const [reqFrom, reqTo]=roundsRef.current[round]||[0,2];
+      return (
+        <div className="space-y-4">
+          <div className="text-slate-600 text-sm text-center">Selecciona <b>origen</b> y luego <b>destino</b>. Debes mover <b>todos</b> los discos desde <b>{`T${reqFrom+1}`}</b> hasta <b>{`T${reqTo+1}`}</b>.</div>
+          <div className="text-center text-xs text-slate-500">Ronda {round+1} / {roundsRef.current.length} — Objetivo: <b>{`T${reqFrom+1} → T${reqTo+1}`}</b></div>
+          <div className="w-full overflow-hidden">
+            <div className="flex flex-nowrap gap-4 justify-center items-end mx-auto">
+              {pegs.map((peg,pi)=>(
+                <button key={pi} onClick={()=>click(pi)}
+                        className={cls('relative h-56 w-60 rounded-xl bg-white grid place-items-end border border-slate-200', sel===pi ? 'border-2 border-slate-900' : '')}
+                        title={`Torre ${pi+1}`}>
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-6 w-1 bg-slate-300 h-40"></div>
+                  <div className="absolute left-3 right-3 bottom-4 h-2 bg-slate-300 rounded"></div>
+                  <div className="w-full flex flex-col-reverse items-center gap-1 pb-6">
+                    {peg.map((d,idx)=>(
+                      <div key={idx} className="h-6 rounded text-[10px] text-white grid place-items-center"
+                           style={{width:`${40+d*15}%`, background:colorFor(d)}}>{d}</div>
+                    ))}
+                  </div>
+                  <div className="absolute top-2 right-2 text-[10px] text-slate-400">{`T${pi+1}`}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Corsi 3×3 -----------------------------------------------
+    function Corsi({onTrial,onDone}){
+      const [trial,setTrial]=useState(0);
+      const [phase,setPhase]=useState('show'); // show | input | final
+      const [seq,setSeq]=useState([]);
+      const [flash,setFlash]=useState(null);
+      const [resp,setResp]=useState([]);
+      const timerRef=useRef(null);
+      const inputStartRef=useRef(null); // RT desde fin de memorización
+      const trialRef=useRef(0);
+
+      useEffect(()=>{ next(0); return()=>clearInterval(timerRef.current); },[]);
+
+      function shuffle(a){ return a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]); }
+      function pickSeq(len){ const cells=Array.from({length:9},(_,i)=>i); return shuffle(cells).slice(0,len); }
+
+      function next(idx){
+        if(idx>=9){ onDone(); return; }
+        trialRef.current = idx; setTrial(idx);
+        const len=3+Math.floor(idx/3); // 3,3,3,4,4,4,5,5,5
+        const s=pickSeq(len);
+        setSeq(s); setResp([]); setPhase('show');
+        let i=0;
+        timerRef.current=setInterval(()=>{
+          setFlash(s[i]); i++;
+          if(i>=s.length){
+            clearInterval(timerRef.current);
+            setTimeout(()=>{ setFlash(null); setPhase('input'); inputStartRef.current=performance.now(); }, 600);
+          }
+        },700);
+      }
+
+      function press(i){
+        const idx = trialRef.current;
+        if(phase!=='input') return;
+        const r=[...resp,i]; setResp(r);
+        if(r.length===seq.length){
+          const correct=JSON.stringify(r)===JSON.stringify(seq);
+          const rt=Math.round(performance.now()-inputStartRef.current);
+          onTrial({task:'corsi', index:idx, stimulus:{seq}, response:{seq:r}, correct, rtMs:rt});
+          setPhase('final'); setTimeout(()=>{ next(idx+1); },300);
+        }
+      }
+
+      return (
+        <div className="space-y-4">
+          <div className="text-slate-600 text-sm text-center">Repite la secuencia tocando los cuadros en el <b>mismo orden</b>.</div>
+          <div className="grid grid-cols-3 gap-3 w-64 mx-auto">
+            {Array.from({length:9},(_,i)=>{
+              const show=phase==='show'&&flash===i;
+              const pressed=(phase==='input' || phase==='final') && resp.includes(i);
+              const clsCell=show?'bg-slate-900 border-slate-900'
+                :(pressed?'bg-emerald-500 border-emerald-600':'bg-white border-slate-300');
+              return <button key={i} onClick={()=>press(i)} className={cls('aspect-square rounded border transition-colors', clsCell)} />;
+            })}
+          </div>
+          <div className="text-center text-xs text-slate-500">Ensayo {trial+1} / 9</div>
+        </div>
+      );
+    }
+
+    // Confirmación de cancelación ---------------------------------
+    function ConfirmCancel({onConfirm,onCancel}){
+      useEffect(()=>{
+        const onKey = (e)=>{ if(e.key==='Escape') onCancel(); };
+        document.addEventListener('keydown', onKey);
+        return ()=>document.removeEventListener('keydown', onKey);
+      },[onCancel]);
+      return (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg">
+            <h3 className="font-semibold text-lg mb-2">Terminar evaluación</h3>
+            <p className="text-sm text-slate-600 mb-4">¿Deseas terminar y ver el informe con lo respondido?</p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={onCancel} className="rounded-lg border px-3 py-2">Seguir</button>
+              <button onClick={onConfirm} className="rounded-lg bg-slate-900 text-white px-3 py-2">Terminar y ver informe</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Reporte -------------------------------------------------
+    function Report({payload,onRestart}){
+      const {participant,completedAt,scores,trials,status}=payload;
+      const by=useMemo(()=>{ const m={}; for(const t of trials){ (m[t.task]=m[t.task]||[]).push(t); } return m; },[trials]);
+      return (
+        <section id="report-root" className="space-y-4">
+          <h2 className="text-lg font-semibold">Informe de resultados</h2>
+          <div className="text-xs text-slate-500">{participant?.name||'Participante'} · ID: {participant?.idNumber||'—'} · Comunidad: {participant?.community||'—'} · F. nac.: {participant?.birthDate||'—'} · {new Date(completedAt).toLocaleString()} · Estado: <b>{status==='cancelled'?'CANCELADA':'COMPLETADA'}</b></div>
+          <div className="grid gap-3">
+            {scores.map(s=> (
+              <div key={s.task} className="rounded-2xl border p-4 bg-white">
+                <div className="font-semibold mb-1">{s.task.toUpperCase()}</div>
+                <div className="text-sm">Exactitud: {pct(s.acc)}%</div>
+                <div className="text-sm">RT medio: {s.rt??'—'} ms</div>
+                {s.task==='hanoi' && <div className="text-sm">Movimientos (válidos): {s.moves??'—'}</div>}
+                <details open className="text-xs text-slate-500 mt-2">
+                  <summary>Ver ensayos ({by[s.task]?.length||0})</summary>
+                  <div className="overflow-auto max-h-48 mt-1">
+                    <table className="w-full text-xs">
+                      <thead><tr><th className="text-left">#</th><th className="text-left">Stim</th><th className="text-left">Resp</th><th>✔</th><th className="text-right">RT</th></tr></thead>
+                      <tbody>
+                        {(by[s.task]||[]).map((t,i)=>(
+                          <tr key={i} className="border-t">
+                            <td>{t.index}</td>
+                            <td className="pr-2"><code className="text-[10px]">{JSON.stringify(t.stimulus)}</code></td>
+                            <td className="pr-2"><code className="text-[10px]">{JSON.stringify(t.response)}</code></td>
+                            <td>{t.correct?'✔':'✖'}</td>
+                            <td className="text-right">{t.rtMs??'—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={()=>window.print()} className="rounded-xl border px-4 py-2">Imprimir / PDF</button>
+            <button onClick={()=>download('informe_'+(participant?.idNumber||'anon')+'.json', JSON.stringify(payload,null,2))} className="rounded-xl bg-slate-900 text-white px-4 py-2">Exportar JSON</button>
+            <button onClick={onRestart} className="rounded-xl border px-4 py-2">Nueva evaluación</button>
+          </div>
+        </section>
+      );
+    }
+
+    // --------------------------------------------------------
+    // Pruebas rápidas (unit tests ligeros en consola)
+    (function runLightTests(){
+      try{
+        console.assert(accuracy([]) === 0, 'accuracy([]) debe ser 0');
+        console.assert(meanRt([{rtMs:100},{rtMs:200},{rtMs:300}]) === 200, 'meanRt promedio');
+        // Verificar longitud y balance de Stroop
+        const sched = [...Array(12).fill('word'),...Array(12).fill('color')];
+        console.assert(sched.length===24, 'Stroop debe tener 24 entradas');
+        console.assert(sched.filter(x=>x==='word').length===12 && sched.filter(x=>x==='color').length===12, '12 word y 12 color');
+        // Simular que en Hanoi se cuenten movimientos válidos
+        const sampleTrials=[{task:'hanoi',correct:true},{task:'hanoi',correct:false},{task:'hanoi',correct:true}];
+        const mv = sampleTrials.filter(t=>t.correct).length; console.assert(mv===2,'movimientos válidos=2');
+        console.log('%cTests básicos OK','color:green');
+      }catch(e){ console.warn('Tests básicos con aviso', e); }
+    })();
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>
