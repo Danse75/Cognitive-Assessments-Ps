@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Evaluaciones neuropsicológicas</title>
+  <title>Evaluaciones neuropsicológicas online</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-50">
@@ -28,14 +28,45 @@
     }
     const defer = (fn) => (...args) => requestAnimationFrame(() => fn(...args));
 
-    // Apps Script endpoint (CORS habilitado)
-    const SHEETS_ENDPOINT = 'https://script.google.com/macros/s/AKfycby9wqLhOmSacFzQKiQgRKxH6YF4VSdXgn2WAzBpuYLEf9Tfld6Bufae-nwdIfGWBydcAA/exec';
+    // --- Persistencia básica para reanudación ---
+    const SAVE_KEY = 'efx.save.v1';
+    function loadSave(){ try { return JSON.parse(localStorage.getItem(SAVE_KEY)||'{}'); } catch { return {}; } }
+    function saveState(patch){ try { const cur = loadSave(); const next = {...cur, ...patch}; localStorage.setItem(SAVE_KEY, JSON.stringify(next)); } catch {} }
+    function clearSave(){ try { localStorage.removeItem(SAVE_KEY); } catch {} }
 
-    // Envío robusto: CORS → sendBeacon → GET b64
+    // Apps Script endpoint (CORS habilitado)
+    const SHEETS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyOFzNACPiTHI4ZIS-Ch3Lcs9NQ0SDf4WVVbPl7zmZybT08v5BHlppvZMBHWOB615qC/exec';
+
+    // === OFFLINE OUTBOX + runId (para sincronizar al reconectar) ===
+    function uuidv4(){ return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);}); }
+    const RUN_KEY='efx.runId.v1';
+    function getRunId(){ let id=localStorage.getItem(RUN_KEY); if(!id){ id=uuidv4(); localStorage.setItem(RUN_KEY,id);} return id; }
+    const OUTBOX_KEY='efx.outbox.v1';
+    function readOutbox(){ try{ return JSON.parse(localStorage.getItem(OUTBOX_KEY)||'[]'); }catch{return [];} }
+    function writeOutbox(list){ try{ localStorage.setItem(OUTBOX_KEY, JSON.stringify(list)); }catch{} }
+    function enqueueOutbox(item){ const q=readOutbox(); q.push(item); writeOutbox(q); }
+    async function flushOutbox(){
+      const q=readOutbox(); if(!q.length) return;
+      const rest=[];
+      for(const it of q){
+        try{
+          await fetch(it.url, {method:'POST', mode:'cors', headers:{'Content-Type':'application/json'}, body: it.body, keepalive:true});
+        }catch(e){ rest.push(it); }
+      }
+      writeOutbox(rest);
+    }
+    window.addEventListener('online', flushOutbox);
+    window.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden'){ flushOutbox(); }});
+
+    // Envío robusto: CORS → sendBeacon → GET b64 → Outbox
     async function sendToSheets(payload){
       if(!SHEETS_ENDPOINT) return;
       const bodyStr = JSON.stringify(payload);
-      // 1) POST CORS estándar (NO usar 'no-cors')
+
+      // Si no hay red, encolamos y salimos
+      if(!navigator.onLine){ enqueueOutbox({url:SHEETS_ENDPOINT, body: bodyStr}); return; }
+
+      // 1) Intento principal: fetch CORS
       try{
         await fetch(SHEETS_ENDPOINT, {
           method:'POST',
@@ -45,22 +76,26 @@
           keepalive: true,
           cache: 'no-cache'
         });
-        return;
-      }catch(e){ console.warn('POST cors falló', e); }
+        return; // éxito
+      }catch(e){ /* sigue a fallback */ }
 
-      // 2) Fallback: sendBeacon (no leemos respuesta)
+      // 2) Fallback: sendBeacon
       try{
         if(navigator.sendBeacon){
-          const ok = navigator.sendBeacon(SHEETS_ENDPOINT, new Blob([bodyStr], {type:'text/plain;charset=UTF-8'}));
+          const ok = navigator.sendBeacon(SHEETS_ENDPOINT, new Blob([bodyStr], {type:'application/json'}));
           if(ok) return;
         }
-      }catch(e){ console.warn('sendBeacon falló', e); }
+      }catch(e){ /* sigue a fallback */ }
 
-      // 3) Fallback: GET base64 (necesita doGet que decodifique "b64")
+      // 3) Fallback: GET con base64 (Apps Script doGet soporta ?b64=)
       try{
         const b64 = btoa(unescape(encodeURIComponent(bodyStr)));
         new Image().src = SHEETS_ENDPOINT + '?b64=' + encodeURIComponent(b64) + '&ts=' + Date.now();
-      }catch(e){ console.warn('GET b64 falló', e); }
+        return;
+      }catch(e){ /* último recurso: encolar */ }
+
+      // 4) Último recurso: encolar para reintento posterior
+      enqueueOutbox({url:SHEETS_ENDPOINT, body: bodyStr});
     }
 
     // Métricas -----------------------------------------------
@@ -72,7 +107,6 @@
       const v = trials.map(t => t.rtMs).filter(x => typeof x === 'number' && isFinite(x));
       return v.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : null;
     }
-    // Helpers para armar reportes/parciales
     function computeScores(trials){
       const by = trials.reduce((m,t)=>{ (m[t.task]=m[t.task]||[]).push(t); return m; }, {});
       return Object.entries(by).map(([task,arr])=>{
@@ -83,6 +117,7 @@
     }
     function buildPayload(participant,trials,status){
       return {
+        runId: getRunId(),
         participant,
         completedAt: new Date().toISOString(),
         status, // 'completed' | 'cancelled'
@@ -95,19 +130,45 @@
     function App(){
       const [view,setView]=useState('start');           // start | consent | check | run | report
       const [firstTask,setFirstTask]=useState('stroop');
-      const [order,setOrder]=useState(['stroop','hanoi','corsi']);
+      const [order,setOrder]=useState(['stroop','hanoi','corsi','digit']);
       const [participant,setParticipant]=useState({name:'',idNumber:'',community:'',birthDate:''});
       const trialsRef=useRef([]);
       const [report,setReport]=useState(null);
       const [askCancel,setAskCancel] = useState(false);
 
-      // Defer setters de navegación para evitar setState during render
+      // Defer setters de navegación para evitar setState durante render
       const setViewDeferred = useCallback(defer(setView), []);
+
+      // Reanudar si existe estado guardado
+      useEffect(()=>{
+        const s = loadSave();
+        if (s && s.view && s.view !== 'report'){
+          const wants = confirm('Se detectó una evaluación previa sin terminar. ¿Deseas reanudarla?');
+          if (wants){
+            setParticipant(s.participant || {name:'',idNumber:'',community:'',birthDate:''});
+            setOrder(s.order || ['stroop','hanoi','corsi','digit']);
+            trialsRef.current = Array.isArray(s.trials) ? s.trials : [];
+            setViewDeferred(s.view || 'start');
+          } else {
+            clearSave();
+          }
+        }
+      },[setViewDeferred]);
+
+      // Guardar progreso clave
+      useEffect(()=>{ try{ flushOutbox(); }catch{} }, []);
+      useEffect(()=>{ saveState({ view, order }); }, [view, order]);
+      useEffect(()=>{ saveState({ participant }); }, [participant]);
+
+      const onTrialCapture = useCallback((t)=>{
+        trialsRef.current.push(t);
+        saveState({ trials: trialsRef.current });
+      },[]);
 
       function begin(){
         if(!participant.name.trim() || !participant.idNumber.trim())
           return alert('Ingresa nombre e ID.');
-        const all=['stroop','hanoi','corsi'];
+        const all=['stroop','hanoi','corsi','digit'];
         setOrder([firstTask, ...all.filter(k=>k!==firstTask)]);
         setViewDeferred('consent');
       }
@@ -117,6 +178,7 @@
         sendToSheets(payload);
         setReport(payload);
         setViewDeferred('report');
+        clearSave();
         setTimeout(()=>document.getElementById('report-root')?.scrollIntoView({behavior:'smooth', block:'start'}), 50);
       }
       function onCancel(){
@@ -124,6 +186,7 @@
         sendToSheets(payload);
         setReport(payload);
         setViewDeferred('report');
+        clearSave();
         setTimeout(()=>document.getElementById('report-root')?.scrollIntoView({behavior:'smooth', block:'start'}), 50);
       }
 
@@ -134,7 +197,7 @@
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-slate-900"></div>
                 <div>
-                  <h1 className="text-xl font-bold">Evaluaciones neuropsicológicas</h1>
+                  <h1 className="text-xl font-bold">Evaluaciones neuropsicológicas online</h1>
                   <p className="text-xs text-slate-500">Demo ejecutable</p>
                 </div>
               </div>
@@ -180,6 +243,7 @@
                       <option value="stroop">Stroop (interferencia)</option>
                       <option value="hanoi">Torre de Hanoi (planificación)</option>
                       <option value="corsi">Corsi 3×3 (memoria visoespacial)</option>
+                      <option value="digit">Dígitos (memoria verbal)</option>
                     </select>
                   </div>
                   <div className="flex gap-2 pt-2">
@@ -195,7 +259,8 @@
 
             {view==='consent' && <Consent onAccept={()=>setViewDeferred('check')} onDecline={()=>setViewDeferred('start')} />}
             {view==='check' && <Check onContinue={()=>setViewDeferred('run')} />}
-            {view==='run' && <Runner order={order} onTrial={(t)=>trialsRef.current.push(t)} onDone={onAllDone} onRequestCancel={()=>setAskCancel(true)} />}{askCancel && <ConfirmCancel onConfirm={()=>{ setAskCancel(false); onCancel(); }} onCancel={()=>setAskCancel(false)} />}
+            {view==='run' && <Runner order={order} onTrial={onTrialCapture} onDone={onAllDone} onRequestCancel={()=>setAskCancel(true)} />}
+            {askCancel && <ConfirmCancel onConfirm={()=>{ setAskCancel(false); onCancel(); }} onCancel={()=>setAskCancel(false)} />}
             {view==='report' && report && <Report payload={report} onRestart={()=>{ trialsRef.current=[]; setReport(null); setViewDeferred('start'); }} />}
           </div>
         </div>
@@ -259,11 +324,22 @@
 
     // Runner --------------------------------------------------
     function Runner({order,onTrial,onDone,onRequestCancel}){
-      const [i,setI]=useState(0);
-      const tasks=useMemo(()=>({stroop:Stroop,hanoi:Hanoi,corsi:Corsi}),[]);
+      // Arranque desde el índice de tarea guardado (si existe)
+      const saved = loadSave();
+      const startI = typeof saved.runIndex==='number' ? saved.runIndex : 0;
+      const [i,setI]=useState(startI);
+      const tasks=useMemo(()=>({stroop:Stroop,hanoi:Hanoi,corsi:Corsi,digit:DigitSpan}),[]);
       const key=order[i]; const Comp=tasks[key];
 
-      const setINextDeferred = useCallback(defer(setI), []);
+      // Progreso por tarea (ensayos completados) para reanudar dentro de cada una
+      const progress = useMemo(()=>{
+        const cnt={}; const s=loadSave();
+        const list = Array.isArray(s.trials)? s.trials : [];
+        for(const t of list){ cnt[t.task]=(cnt[t.task]||0)+1; }
+        return cnt;
+      },[]);
+
+      const setINextDeferred = useCallback(defer((val)=>{ setI(val); saveState({runIndex: val}); }), []);
       const handleDone = () => {
         if(i+1<order.length) setINextDeferred(i+1); else onDone();
       };
@@ -275,14 +351,14 @@
             <button onClick={onRequestCancel} className="rounded-lg border px-3 py-1 text-xs">Cancelar evaluación</button>
           </div>
           <div className="rounded-2xl border bg-white p-4">
-            {Comp? <Comp onTrial={onTrial} onDone={handleDone} /> : <div>No encontrada: {String(key)}</div>}
+            {Comp? <Comp onTrial={onTrial} onDone={handleDone} startAt={progress[key]||0} /> : <div>No encontrada: {String(key)}</div>}
           </div>
         </section>
       );
     }
 
     // Stroop --------------------------------------------------
-    function Stroop({onTrial,onDone}){
+    function Stroop({onTrial,onDone,startAt=0}){
       const COLORS=[
         {name:'ROJO', css:'text-red-600', key:'R'},
         {name:'AZUL', css:'text-blue-600', key:'A'},
@@ -293,7 +369,7 @@
       const schedule=useRef([...Array(12).fill('word'),...Array(12).fill('color')]
         .map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]));
 
-      const [trial,setTrial]=useState(0);
+      const [trial,setTrial]=useState(startAt);
       const [stim,setStim]=useState(null);
       const [mode,setMode]=useState('word'); // word | color
       const [opts,setOpts]=useState([]);
@@ -302,7 +378,7 @@
       function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
       function mkStim(){ let w=pick(COLORS), i=pick(COLORS); while(i.name===w.name){ i=pick(COLORS); } return {word:w,ink:i}; }
 
-      useEffect(()=>{ setTrial(0); next(0); },[]);
+      useEffect(()=>{ next(startAt); },[startAt]);
 
       function next(idx){
         if(idx>=N_TRIALS){ onDone(); return; }
@@ -324,7 +400,7 @@
         const task = mode==='word'?'stroop_word':'stroop_color';
         const idx = trial;
         onTrial({ task, index:idx, stimulus:{word:stim.word.name,ink:stim.ink.name}, response:{choice:sel.name}, correct:isCorrect, rtMs:rt });
-        setTrial(t=>{ const nt=t+1; next(nt); return nt; });
+        const nt = idx+1; setTrial(nt); next(nt);
       }
 
       return (
@@ -344,10 +420,10 @@
       );
     }
 
-    // Hanoi --------------------------------------------------- ---------------------------------------------------
-    function Hanoi({onTrial,onDone}){
+    // Hanoi ---------------------------------------------------
+    function Hanoi({onTrial,onDone,startAt=0}){
       const N=3;
-      const moveIdx=useRef(0);
+      const moveIdx=useRef(startAt);
       const tMove=useRef(performance.now());
       const roundsRef=useRef([[0,2],[1,2],[2,0],[2,1],[1,0],[1,2]]); // [from,to]
       const [round,setRound]=useState(0);
@@ -423,17 +499,17 @@
     }
 
     // Corsi 3×3 -----------------------------------------------
-    function Corsi({onTrial,onDone}){
-      const [trial,setTrial]=useState(0);
+    function Corsi({onTrial,onDone,startAt=0}){
+      const [trial,setTrial]=useState(startAt);
       const [phase,setPhase]=useState('show'); // show | input | final
       const [seq,setSeq]=useState([]);
       const [flash,setFlash]=useState(null);
       const [resp,setResp]=useState([]);
       const timerRef=useRef(null);
       const inputStartRef=useRef(null); // RT desde fin de memorización
-      const trialRef=useRef(0);
+      const trialRef=useRef(startAt);
 
-      useEffect(()=>{ next(0); return()=>clearInterval(timerRef.current); },[]);
+      useEffect(()=>{ next(startAt); return()=>clearInterval(timerRef.current); },[startAt]);
 
       function shuffle(a){ return a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]); }
       function pickSeq(len){ const cells=Array.from({length:9},(_,i)=>i); return shuffle(cells).slice(0,len); }
@@ -479,6 +555,100 @@
             })}
           </div>
           <div className="text-center text-xs text-slate-500">Ensayo {trial+1} / 9</div>
+        </div>
+      );
+    }
+
+    // Digit Span (memoria de trabajo verbal) ------------------
+    function DigitSpan({onTrial,onDone,startAt=0}){
+      // 8 ensayos (4 directos 3-6 y 4 inversos 3-6)
+      const PLAN = [
+        {dir:'forward', len:3}, {dir:'forward', len:4}, {dir:'forward', len:5}, {dir:'forward', len:6},
+        {dir:'backward', len:3}, {dir:'backward', len:4}, {dir:'backward', len:5}, {dir:'backward', len:6},
+      ];
+
+      // --- Configuración de temporización ---
+      const PER_DIGIT_MS = 1100;                 // cada número visible 1100 ms
+      const GAP_AFTER_SEQUENCE_MS = 600;         // pausa tras exposición
+
+      const [trial,setTrial]=useState(startAt);
+      const [phase,setPhase]=useState('show'); // show | input | final
+      const [seq,setSeq]=useState([]);
+      const [flashIdx,setFlashIdx]=useState(-1);
+      const [resp,setResp]=useState([]);
+      const timerRef=useRef(null);
+      const inputStartRef=useRef(null);
+      const trialRef=useRef(startAt);
+
+      useEffect(()=>{ next(startAt); return()=>clearInterval(timerRef.current); },[startAt]);
+
+      function randDigits(n){ const digs=[]; for(let i=0;i<n;i++){ digs.push(Math.floor(Math.random()*9)+1); } return digs; }
+
+      function next(idx){
+        if(idx>=PLAN.length){ onDone(); return; }
+        trialRef.current=idx; setTrial(idx);
+        const {len}=PLAN[idx];
+        const s=randDigits(len);
+        setSeq(s); setResp([]); setPhase('show'); setFlashIdx(-1);
+        let i=0;
+        timerRef.current=setInterval(()=>{
+          setFlashIdx(s[i]); i++;
+          if(i>=s.length){
+            clearInterval(timerRef.current);
+            setTimeout(()=>{ setFlashIdx(-1); setPhase('input'); inputStartRef.current=performance.now(); }, GAP_AFTER_SEQUENCE_MS);
+          }
+        }, PER_DIGIT_MS);
+      }
+
+      function pressDigit(d){ if(phase==='input'){ setResp(r=>{ const n=[...r,d]; const need = PLAN[trialRef.current].len; if(n.length===need) submit(n); return n; }); } }
+      function backspace(){ if(phase==='input' && resp.length){ setResp(r=>r.slice(0,-1)); } }
+      function submit(rNow){
+        const idx=trialRef.current; const {dir}=PLAN[idx];
+        const expect = dir==='forward' ? seq : [...seq].reverse();
+        const correct = JSON.stringify(rNow||resp)===JSON.stringify(expect);
+        const rt=Math.round(performance.now()-inputStartRef.current);
+        onTrial({task:'digit_span', index:idx, stimulus:{seq, direction:dir}, response:{seq:rNow||resp}, correct, rtMs:rt});
+        setPhase('final'); setTimeout(()=>{ next(idx+1); }, 400);
+      }
+
+      useEffect(()=>{
+        const onKey=(e)=>{
+          if(!isFinite(e.key)){
+            if(e.key==='Backspace'){ backspace(); }
+            if(e.key==='Enter'){ if(phase==='input') submit(resp); }
+            return;
+          }
+          const d = Number(e.key);
+          if(d>=0 && d<=9) pressDigit(d);
+        };
+        document.addEventListener('keydown', onKey);
+        return ()=>document.removeEventListener('keydown', onKey);
+      },[phase,resp]);
+
+      const {dir,len}=PLAN[trial] || {dir:'forward',len:3};
+      const digits = [1,2,3,4,5,6,7,8,9,0];
+      const display = phase==='show' ? (flashIdx>-1 ? String(flashIdx) : ' ')
+                       : (resp.length? resp.join('') : '');
+
+      return (
+        <div className="space-y-4">
+          <div className="text-slate-600 text-sm text-center">
+            Recuerda la secuencia de números y repítela {dir==='forward' ? <b>en el mismo orden</b> : <b>al revés</b>}.
+          </div>
+          <div className="text-center text-xs text-slate-500">Ensayo {trial+1} / {PLAN.length} — Longitud: {len} — Modo: {dir==='forward'? 'Directo':'Inverso'}</div>
+
+          <div className="grid place-items-center">
+            <div className={cls('h-20 min-w-[12rem] grid place-items-center rounded-xl border text-3xl font-semibold', phase==='show'?'bg-slate-900 text-white':'bg-white')}>{display}</div>
+          </div>
+
+          <div className="mx-auto max-w-xs grid grid-cols-3 gap-2">
+            {digits.slice(0,9).map(d=> (
+              <button key={d} onClick={()=>pressDigit(d)} className="rounded-xl border py-3 text-lg">{d}</button>
+            ))}
+            <button onClick={backspace} className="rounded-xl border py-3 text-sm">Borrar</button>
+            <button onClick={()=>pressDigit(0)} className="rounded-xl border py-3 text-lg">0</button>
+            <button onClick={()=>submit(resp)} className="rounded-xl border py-3 text-sm">Listo</button>
+          </div>
         </div>
       );
     }
@@ -544,7 +714,7 @@
           <div className="flex gap-2">
             <button onClick={()=>window.print()} className="rounded-xl border px-4 py-2">Imprimir / PDF</button>
             <button onClick={()=>download('informe_'+(participant?.idNumber||'anon')+'.json', JSON.stringify(payload,null,2))} className="rounded-xl bg-slate-900 text-white px-4 py-2">Exportar JSON</button>
-            <button onClick={onRestart} className="rounded-xl border px-4 py-2">Nueva evaluación</button>
+            <button onClick={()=>{ clearSave(); onRestart(); }} className="rounded-xl border px-4 py-2">Nueva evaluación</button>
           </div>
         </section>
       );
@@ -556,18 +726,29 @@
       try{
         console.assert(accuracy([]) === 0, 'accuracy([]) debe ser 0');
         console.assert(meanRt([{rtMs:100},{rtMs:200},{rtMs:300}]) === 200, 'meanRt promedio');
-        // Verificar longitud y balance de Stroop
         const sched = [...Array(12).fill('word'),...Array(12).fill('color')];
         console.assert(sched.length===24, 'Stroop debe tener 24 entradas');
         console.assert(sched.filter(x=>x==='word').length===12 && sched.filter(x=>x==='color').length===12, '12 word y 12 color');
-        // Simular que en Hanoi se cuenten movimientos válidos
-        const sampleTrials=[{task:'hanoi',correct:true},{task:'hanoi',correct:false},{task:'hanoi',correct:true}];
-        const mv = sampleTrials.filter(t=>t.correct).length; console.assert(mv===2,'movimientos válidos=2');
+        const s=[1,2,3]; const expectRev=[...s].reverse();
+        console.assert(JSON.stringify(expectRev)==='[3,2,1]','DigitSpan reverse OK');
+        // Nuevos tests
+        const PLAN_TEST = [
+          {dir:'forward', len:3}, {dir:'forward', len:4}, {dir:'forward', len:5}, {dir:'forward', len:6},
+          {dir:'backward', len:3}, {dir:'backward', len:4}, {dir:'backward', len:5}, {dir:'backward', len:6},
+        ];
+        console.assert(PLAN_TEST.length===8, 'DigitSpan debe tener 8 ensayos');
+        console.assert(PLAN_TEST.filter(p=>p.dir==='forward').length===4, 'DigitSpan 4 directos');
+        console.assert(PLAN_TEST.filter(p=>p.dir==='backward').length===4, 'DigitSpan 4 inversos');
         console.log('%cTests básicos OK','color:green');
       }catch(e){ console.warn('Tests básicos con aviso', e); }
     })();
 
     ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+
+    // Registrar Service Worker para carga offline
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(console.warn);
+    }
   </script>
 </body>
 </html>
