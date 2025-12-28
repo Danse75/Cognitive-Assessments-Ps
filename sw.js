@@ -1,5 +1,5 @@
 /* Service Worker para modo offline y caché de recursos básicos */
-const CACHE = 'efx-cache-v3';
+const CACHE = 'efx-cache-v3.1';
 const ASSETS = [
   './',
   './index.html',
