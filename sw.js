@@ -1,71 +1,106 @@
-// sw.js — listo para GitHub Pages
-const VERSION = 'efx-v1';
+// sw.js — Service Worker para cachear la app y funcionar offline
+const VERSION = 'v3';
+const PRECACHE = `precache-${VERSION}`;
+const RUNTIME  = `runtime-${VERSION}`;
 
-// Base path del repo en GitHub Pages, deducido del propio SW:
-// ej.: /Cognitive-Assessments-Ps/
-const BASE_PATH = self.location.pathname.replace(/sw\.js$/, '');
-const INDEX_HTML = BASE_PATH + 'index_with_moves.html';
-
-const ASSETS = [
-  INDEX_HTML,
-  BASE_PATH + 'sw.js',
-  // CDNs que usa tu HTML (se guardan como respuestas "opaque", válidas offline)
-  'https://cdn.tailwindcss.com',
-  'https://unpkg.com/react@18/umd/react.development.js',
-  'https://unpkg.com/react-dom@18/umd/react-dom.development.js',
-  'https://unpkg.com/@babel/standalone/babel.min.js',
+// Archivos locales mínimos para poder abrir la app sin internet
+// (coloca aquí el nombre EXACTO de tu HTML)
+const PRECACHE_URLS = [
+  './index_with_moves.html',
+  './sw.js'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(VERSION).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(PRECACHE).then((cache) => cache.addAll(PRECACHE_URLS))
   );
+  // Que el nuevo SW tome control lo antes posible
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.map(k => (k === VERSION ? null : caches.delete(k))))
-    ).then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    // Limpia caches antiguos
+    const names = await caches.keys();
+    await Promise.all(
+      names
+        .filter(n => n !== PRECACHE && n !== RUNTIME)
+        .map(n => caches.delete(n))
+    );
+    // Activa navigation preload si existe (mejora en conexiones lentas)
+    if ('navigationPreload' in self.registration) {
+      try { await self.registration.navigationPreload.enable(); } catch {}
+    }
+  })());
+  self.clients.claim();
 });
 
 // Estrategias:
-// - Navegaciones (HTML): network-first con fallback al INDEX_HTML cacheado.
-// - Otros GET: cache-first con actualización en segundo plano.
-// - No interceptamos POST (Apps Script).
+// 1) Navegación (página): sirve la versión cacheada de index si no hay red.
+// 2) Recursos del mismo origen: cache-first.
+// 3) Recursos de otros orígenes (CDN): network-first con fallback a cache.
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
+  const isNavigation = req.mode === 'navigate';
 
-  // Deja pasar los POST sin tocar (envíos a Apps Script)
-  if (req.method !== 'GET') return;
-
-  // Navegaciones (páginas)
-  const isNavigation = req.mode === 'navigate' || (req.destination === 'document');
   if (isNavigation) {
-    event.respondWith(
-      fetch(req).then(res => {
-        // cachea copia
-        const copy = res.clone();
-        caches.open(VERSION).then(c => c.put(req, copy));
-        return res;
-      }).catch(() =>
-        caches.match(req).then(r => r || caches.match(INDEX_HTML))
-      )
-    );
+    event.respondWith((async () => {
+      // Intenta usar navigation preload (si el navegador lo soporta)
+      try {
+        const preloaded = await event.preloadResponse;
+        if (preloaded) return preloaded;
+      } catch {}
+
+      // Intenta red primero
+      try {
+        const net = await fetch(req);
+        // Si carga bien, actualiza cache de la página principal
+        const cache = await caches.open(PRECACHE);
+        cache.put('./index_with_moves.html', net.clone());
+        return net;
+      } catch {
+        // Sin red: sirve la copia cacheada de la app
+        const cached = await caches.match('./index_with_moves.html');
+        if (cached) return cached;
+        return new Response('<h1>Sin conexión</h1>', { headers: { 'Content-Type':'text/html' }});
+      }
+    })());
     return;
   }
 
-  // Otros GET: cache-first + revalidate
-  event.respondWith(
-    caches.match(req).then(cached => {
-      const fetchPromise = fetch(req).then(res => {
-        const copy = res.clone();
-        caches.open(VERSION).then(c => c.put(req, copy));
-        return res;
-      }).catch(() => cached || Promise.reject('offline'));
-      return cached || fetchPromise;
-    })
-  );
+  // Misma-origen: cache-first
+  if (url.origin === self.location.origin) {
+    event.respondWith((async () => {
+      const cached = await caches.match(req);
+      if (cached) return cached;
+      try {
+        const net = await fetch(req);
+        const runtime = await caches.open(RUNTIME);
+        runtime.put(req, net.clone());
+        return net;
+      } catch (e) {
+        // Si falla, intenta al menos devolver algo del cache
+        const fallback = await caches.match('./index_with_moves.html');
+        return fallback || new Response('', { status: 504 });
+      }
+    })());
+    return;
+  }
+
+  // Cross-origin (CDN de React, Tailwind, Babel, etc.): network-first
+  event.respondWith((async () => {
+    try {
+      const net = await fetch(req);
+      const runtime = await caches.open(RUNTIME);
+      // Respuestas opacas (no-cors) también se pueden guardar
+      runtime.put(req, net.clone());
+      return net;
+    } catch {
+      const cached = await caches.match(req);
+      if (cached) return cached;
+      // Último recurso: no hay nada
+      return new Response('', { status: 504 });
+    }
+  })());
 });
