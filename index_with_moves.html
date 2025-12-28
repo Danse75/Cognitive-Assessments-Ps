@@ -747,7 +747,7 @@
 
     // Registrar Service Worker para carga offline
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').catch(console.warn);
+      navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' }).catch(console.warn);
     }
   </script>
 </body>
