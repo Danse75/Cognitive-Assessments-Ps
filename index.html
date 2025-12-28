@@ -68,7 +68,6 @@
       try{
         const b64 = btoa(unescape(encodeURIComponent(bodyStr)));
         await fetch(withTs + '&b64=' + b64, { mode:'no-cors' });
-        // aunque no podamos leer la respuesta, el servidor recibe la solicitud
         return true;
       }catch(e){ /* continúa */ }
       return false;
@@ -88,6 +87,7 @@
     window.addEventListener('online', flushOutbox);
     window.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden'){ flushOutbox(); }});
     setInterval(()=>{ try{ flushOutbox(); }catch{} }, 15000);
+    window.addEventListener('load', ()=>{ try{ flushOutbox(); }catch{} });
 
     // Envío robusto: CORS → sendBeacon → GET b64 → Outbox
     async function sendToSheets(payload){
@@ -136,6 +136,9 @@
       const trialsRef=useRef([]);
       const [report,setReport]=useState(null);
       const [askCancel,setAskCancel] = useState(false);
+
+      // Pedimos almacenamiento persistente si es posible (más robusto offline)
+      useEffect(()=>{ if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); },[]);
 
       // Defer setters de navegación para evitar setState durante render
       const setViewDeferred = useCallback(defer(setView), []);
@@ -742,7 +745,6 @@
         console.assert(sched.filter(x=>x==='word').length===12 && sched.filter(x=>x==='color').length===12, '12 word y 12 color');
         const s=[1,2,3]; const expectRev=[...s].reverse();
         console.assert(JSON.stringify(expectRev)==='[3,2,1]','DigitSpan reverse OK');
-        // Tests para el plan de DigitSpan 3,3,4,4 (directo e inverso)
         const PLAN_TEST = [
           {dir:'forward', len:3}, {dir:'forward', len:3}, {dir:'forward', len:4}, {dir:'forward', len:4},
           {dir:'backward', len:3}, {dir:'backward', len:3}, {dir:'backward', len:4}, {dir:'backward', len:4},
@@ -750,7 +752,6 @@
         console.assert(PLAN_TEST.length===8, 'DigitSpan debe tener 8 ensayos');
         console.assert(PLAN_TEST.filter(p=>p.dir==='forward').length===4, 'DigitSpan 4 directos');
         console.assert(PLAN_TEST.filter(p=>p.dir==='backward').length===4, 'DigitSpan 4 inversos');
-        // Verifica conteo de movimientos en Hanoi
         const movesScore = computeScores([
           {task:'hanoi', correct:true, rtMs:100},
           {task:'hanoi', correct:false, rtMs:120},
@@ -762,9 +763,10 @@
     })();
 
     ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
-    // Registrar Service Worker para carga offline
+    // Registrar Service Worker para carga offline (ruta absoluta robusta en GitHub Pages)
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' }).catch(console.warn);
+      const swURL = new URL('sw.js', location.href).toString();
+      navigator.serviceWorker.register(swURL, { scope: './', updateViaCache: 'none' }).catch(console.warn);
     }
   </script>
 </body>
