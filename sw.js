@@ -57,11 +57,11 @@ self.addEventListener('fetch', (event) => {
         const net = await fetch(req);
         // Si carga bien, actualiza cache de la página principal
         const cache = await caches.open(PRECACHE);
-        cache.put('./index_with_moves.html', net.clone());
+        cache.put('./index.html', net.clone());
         return net;
       } catch {
         // Sin red: sirve la copia cacheada de la app
-        const cached = await caches.match('./index_with_moves.html');
+        const cached = await caches.match('./index.html');
         if (cached) return cached;
         return new Response('<h1>Sin conexión</h1>', { headers: { 'Content-Type':'text/html' }});
       }
@@ -81,7 +81,7 @@ self.addEventListener('fetch', (event) => {
         return net;
       } catch (e) {
         // Si falla, intenta al menos devolver algo del cache
-        const fallback = await caches.match('./index_with_moves.html');
+        const fallback = await caches.match('./index.html');
         return fallback || new Response('', { status: 504 });
       }
     })());
