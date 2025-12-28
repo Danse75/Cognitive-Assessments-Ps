@@ -35,7 +35,7 @@
     function clearSave(){ try { localStorage.removeItem(SAVE_KEY); } catch {} }
 
     // Apps Script endpoint (CORS habilitado)
-    const SHEETS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyOFzNACPiTHI4ZIS-Ch3Lcs9NQ0SDf4WVVbPl7zmZybT08v5BHlppvZMBHWOB615qC/exec';
+    const SHEETS_ENDPOINT = 'https://script.google.com/macros/s/AKfycby9wqLhOmSacFzQKiQgRKxH6YF4VSdXgn2WAzBpuYLEf9Tfld6Bufae-nwdIfGWBydcAA/exec';
 
     // === OFFLINE OUTBOX + runId (para sincronizar al reconectar) ===
     function uuidv4(){ return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);}); }
