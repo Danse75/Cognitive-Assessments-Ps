@@ -2,7 +2,7 @@
 const CACHE = 'efx-cache-v3.1';
 const ASSETS = [
   './',
-  './index.html',
+  './evaluaciones.html',
   './sw.js',
   // CDNs que usamos (se almacenan como respuestas "opaque")
   'https://cdn.tailwindcss.com',
