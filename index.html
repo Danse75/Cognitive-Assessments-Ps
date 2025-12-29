@@ -40,11 +40,11 @@
 
     // === OFFLINE OUTBOX + runId (para sincronizar al reconectar) ===
     function uuidv4(){ return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);}); }
-    const RUN_KEY='efx.runId.v1';
+    const RUN_KEY='efx.runId.v3.1';
     function getRunId(){ let id=localStorage.getItem(RUN_KEY); if(!id){ id=uuidv4(); localStorage.setItem(RUN_KEY,id);} return id; }
     function newRunId(){ const id=uuidv4(); try{ localStorage.setItem(RUN_KEY,id);}catch{} return id; }
     function resetRunId(){ try{ localStorage.removeItem(RUN_KEY); } catch{} }
-    const OUTBOX_KEY='efx.outbox.v1';
+    const OUTBOX_KEY='efx.outbox.v3.1';
     function readOutbox(){ try{ return JSON.parse(localStorage.getItem(OUTBOX_KEY)||'[]'); }catch{return [];} }
     function writeOutbox(list){ try{ localStorage.setItem(OUTBOX_KEY, JSON.stringify(list)); }catch{} }
     function enqueueOutbox(item){ const q=readOutbox(); q.push(item); writeOutbox(q); }
