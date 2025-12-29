@@ -501,7 +501,7 @@
       const [reqFrom, reqTo]=roundsRef.current[round]||[0,2];
       return (
         <div className="space-y-4">
-          <div className="text-slate-600 text-sm text-center">Selecciona <b>origen</b> y luego <b>destino</b>. Debes mover <b>todos</b> los discos desde <b>{`T${reqFrom+1}`}</b> hasta <b>{`T${reqTo+1}`}</b>.</div>
+          <div className="text-slate-600 text-sm text-center">SELECCIONA <b>ORIGEN</b> Y LUEGO <b>DESTINO</b>. DEBES MOVER <b>TODOS</b> LOS DISCOS DESDE <b>{`T${reqFrom+1}`}</b> HASTA <b>{`T${reqTo+1}`}</b>.</div>
           <div className="text-center text-xs text-slate-500">Ronda {round+1} / {roundsRef.current.length} — Objetivo: <b>{`T${reqFrom+1} → T${reqTo+1}`}</b></div>
           <div className="w-full overflow-hidden">
             <div className="flex flex-nowrap gap-4 justify-center items-end mx-auto">
@@ -572,7 +572,7 @@
 
       return (
         <div className="space-y-4">
-          <div className="text-slate-600 text-sm text-center">Repite la secuencia tocando los cuadros en el <b>mismo orden</b>.</div>
+          <div className="text-slate-600 text-sm text-center">REPITE LA SECUENCIA TOCANDO LOS CUADROS EN EL <b>MISMO ORDEN</b> QUE FUERON PRESENTADOS.</div>
           <div className="grid grid-cols-3 gap-3 w-64 mx-auto">
             {Array.from({length:9},(_,i)=>{
               const show=phase==='show'&&flash===i;
@@ -668,7 +668,7 @@
       return (
         <div className="space-y-4">
           <div className="text-slate-600 text-sm text-center">
-            Recuerda la secuencia de números y repítela {dir==='forward' ? <b>en el mismo orden</b> : <b>al revés</b>}.
+            RECUERDA LA SECUENCIA DE NÚMEROS REPÍTELA {dir==='forward' ? <b>EN EL ORDEN SOLICITADO</b> : <b>al revés</b>}.
           </div>
           <div className="text-center text-xs text-slate-500">Ensayo {trial+1} / {PLAN.length} — Longitud: {len} — Modo: {dir==='forward'? 'Directo':'Inverso'}</div>
 
