@@ -236,7 +236,7 @@
             {view==='start' && (
               <section className="space-y-4">
                 <h2 className="text-lg font-semibold">Inicio</h2>
-                <p className="text-slate-600 text-sm">Completarás todas las pruebas. Elige con cuál deseas empezar e ingresa tus datos.</p>
+                <p className="text-slate-600 text-sm">Completa los siguientes apartados con tus datos.</p>
                 <div className="grid gap-3 rounded-2xl border bg-white p-4">
                   <div className="grid gap-1">
                     <label className="text-xs text-slate-500">Nombres y apellidos</label>
@@ -368,7 +368,7 @@
                     Iniciar
                   </button>
                   <div className="text-[11px] leading-snug text-slate-500">
-                    Copyright © {year} Danny Sebastian Ordoñez Alberca y José Luis Vílchez Tornero. No part of this
+                    Copyright © {year} Danny Sebastian Ordóñez Alberca y Jose Luis Vilchez Tornero. No part of this
                     repository may be copied, modified, distributed, or used for commercial, academic, or clinical purposes
                     without explicit written permission from the author.
                   </div>
@@ -402,10 +402,10 @@
         <section className="space-y-4">
           <h2 className="text-lg font-semibold">Consentimiento informado</h2>
           <div className="rounded-2xl border p-4 bg-white text-sm leading-relaxed text-slate-700 max-h-64 overflow-auto">
-            <p><b>Propósito:</b> evaluar funciones cognitivas mediante tareas breves en línea.</p>
-            <p><b>Duración:</b> 8–12 minutos. Puede tomar descansos si lo necesita.</p>
-            <p><b>Riesgos:</b> mínimos (fatiga/aburrimiento).</p>
-            <p><b>Datos:</b> se recogen tiempos de reacción, aciertos/errores y metadatos técnicos.</p>
+            <p><b>Propósito:</b> evaluar funciones cognitivas mediante tareas de Psicología experimental.</p>
+            <p><b>Duración:</b> El tiempo aproximado es de 8–12 minutos. Puede tomar descansos si lo necesita.</p>
+            <p><b>Riesgos:</b> mínimos como, por ejemplo, fatiga y/o aburrimiento.</p>
+            <p><b>Datos:</b> se recogen tiempos de reacción, aciertos/errores y metadatos técnicos con fines clínicos, académicos y de investigación.</p>
           </div>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" checked={ok} onChange={e=>setOk(e.target.checked)} className="mt-1"/>
@@ -493,22 +493,22 @@
       const taskMeta = useMemo(()=>({
         stroop: {
           title: 'Stroop (interferencia)',
-          help: 'Vas a responder a la palabra o al color según se indique. Responde lo más rápido posible, sin sacrificar precisión.',
+          help: 'Responde, por favor, a la palabra o al color según se indique en la pregunta. Recuerda que no hay respuestas ni buenas ni malas.',
           videoSrc: './videos/stroop.mp4',
         },
         hanoi: {
           title: 'Torre de Hanoi (planificación)',
-          help: 'Selecciona una torre origen y luego una torre destino. Sólo se puede mover un disco a la vez y no puedes poner un disco grande sobre uno pequeño.',
+          help: 'Mueve, por favor, todos los discos desde la torre de origen hacia la torre de destino. Recuerda que sólo puedes mover un disco a la vez y no puedes poner un disco grande sobre uno pequeño.',
           videoSrc: './videos/hanoi.mp4',
         },
         corsi: {
           title: 'Corsi 3×3 (memoria visoespacial)',
-          help: 'Observa la secuencia de cuadros y repítela en el mismo orden.',
+          help: 'Observa, por favor, atentamente la secuencia que los cuadros se iluminarán. Una vez que la secuencia finalice repítela, por favor, en el mismo orden.',
           videoSrc: './videos/corsi.mp4',
         },
         digit: {
           title: 'Dígitos (memoria verbal)',
-          help: 'Observa la secuencia de números. Luego repítela en el mismo orden (directo) o al revés (inverso), según se indique.',
+          help: 'Observa, por favor, atentamente la secuencia de números. Luego, por favor, repítela en el mismo orden (directo) o al revés (inverso), según se indique.',
           videoSrc: './videos/digit.mp4',
         }
       }),[]);
