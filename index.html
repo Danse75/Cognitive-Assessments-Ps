@@ -670,7 +670,7 @@
           <div className="text-slate-600 text-sm text-center">
             RECUERDA LA SECUENCIA DE NÚMEROS REPÍTELA {dir==='forward' ? <b>EN EL ORDEN SOLICITADO</b> : <b>al revés</b>}.
           </div>
-          <div className="text-center text-xs text-slate-500">Ensayo {trial+1} / {PLAN.length} — Longitud: {len} — Modo: {dir==='forward'? 'Directo':'Inverso'}</div>
+          <div className="text-center text-xs text-slate-500">Ensayo {trial+1} / {PLAN.length} — Longitud: {len} — ORDEN: {dir==='forward'? 'Directo':'Inverso'}</div>
 
           <div className="grid place-items-center">
             <div className={cls('h-20 min-w-[12rem] grid place-items-center rounded-xl border text-3xl font-semibold', phase==='show'?'bg-slate-900 text-white':'bg-white')}>{display}</div>
