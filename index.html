@@ -30,7 +30,7 @@
     const defer = (fn) => (...args) => requestAnimationFrame(() => fn(...args));
 
     // --- Persistencia básica para reanudación ---
-    const SAVE_KEY = 'efx.save.v1';
+    const SAVE_KEY = 'efx.save.v3.1';
     function loadSave(){ try { return JSON.parse(localStorage.getItem(SAVE_KEY)||'{}'); } catch { return {}; } }
     function saveState(patch){ try { const cur = loadSave(); const next = {...cur, ...patch}; localStorage.setItem(SAVE_KEY, JSON.stringify(next)); } catch {} }
     function clearSave(){ try { localStorage.removeItem(SAVE_KEY); } catch {} }
