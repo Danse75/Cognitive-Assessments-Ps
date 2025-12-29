@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bienvenida | Evaluaciones neuropsicológicas</title>
+  <link rel="icon" href="data:,">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="min-h-screen bg-slate-50 text-slate-900">
+  <main class="min-h-screen grid place-items-center p-6">
+    <div class="w-full max-w-2xl">
+      <div class="rounded-3xl border bg-white p-8 shadow-sm">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 rounded-2xl bg-slate-900"></div>
+          <div>
+            <h1 class="text-2xl font-bold leading-tight">Bienvenido/a</h1>
+            <p class="text-sm text-slate-500">Evaluaciones neuropsicológicas</p>
+          </div>
+        </div>
+
+        <div class="space-y-4 text-slate-700 leading-relaxed">
+          <p>
+            Gracias por tomarte el tiempo para realizar estas pruebas.
+            Tu participación es importante y nos ayuda a obtener información valiosa sobre el funcionamiento cognitivo.
+          </p>
+          <p>
+            Antes de empezar, busca un lugar tranquilo, sin interrupciones. Si por algún motivo deseas detenerte,
+            podrás finalizar y ver el informe con lo que hayas respondido.
+          </p>
+          <p class="text-sm text-slate-600">
+            Cuando estés listo, presiona el botón para iniciar.
+          </p>
+        </div>
+
+        <div class="mt-8 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+          <a
+            href="./index.html"
+            class="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-6 py-3 text-white font-semibold hover:opacity-95"
+          >
+            Iniciar evaluaciones
+          </a>
+
+          <div class="text-xs text-slate-500">
+            <span id="copyright"></span>
+          </div>
+        </div>
+
+        <hr class="my-6" />
+
+        <details class="text-xs text-slate-500">
+          <summary class="cursor-pointer select-none">Información importante</summary>
+          <div class="mt-2 space-y-2">
+            <p>• Asegúrate de tener suficiente batería (o mantener el dispositivo cargando).</p>
+            <p>• Si la conexión es inestable, puedes continuar. El sistema intentará registrar los datos cuando haya Internet.</p>
+            <p>• Lee con atención las instrucciones que aparecerán antes de cada tarea.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Ajusta el nombre como quieras:
+    const autor = "Danny Sebastian Ordoñez Alberca";
+    const anio = new Date().getFullYear();
+    document.getElementById("copyright").textContent =
+      `Copyright © ${anio} ${autor}. No part of this repository may be copied, modified, distributed,
+or used for commercial, academic, or clinical purposes without
+explicit written permission from the author.`;
+  </script>
+</body>
+</html>
