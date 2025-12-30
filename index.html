@@ -236,7 +236,7 @@
             {view==='start' && (
               <section className="space-y-4">
                 <h2 className="text-lg font-semibold">Inicio</h2>
-                <p className="text-slate-600 text-sm">Completa los siguientes apartados con tus datos.</p>
+                <p className="text-slate-600 text-base">Completa los siguientes apartados con los datos solicitados.</p>
                 <div className="grid gap-3 rounded-2xl border bg-white p-4">
                   <div className="grid gap-1">
                     <label className="text-xs text-slate-500">Nombres y apellidos</label>
@@ -257,7 +257,7 @@
                     <input className="rounded-xl border px-3 py-2"
                            value={participant.community}
                            onChange={e=>setParticipant(p=>({...p,community:e.target.value}))}
-                           placeholder="Ej.: Los Encuentros"/>
+                           placeholder="Por ejemplo.: Los Encuentros"/>
                   </div>
                   <div className="grid gap-1">
                     <label className="text-xs text-slate-500">Fecha de nacimiento</label>
@@ -304,7 +304,7 @@
           <div className="space-y-1">
             <h3 className="text-lg font-semibold">{title}</h3>
             {help ? <p className="text-sm text-slate-600">{help}</p> : null}
-            <p className="text-xs text-slate-500">Mira el video y cuando estés listo, presiona <b>Iniciar</b>.</p>
+            <p className="text-base text-slate-500">Mira el video y cuando estés listo, presiona <b>Iniciar</b>.</p>
           </div>
 
           <div className="rounded-2xl border bg-slate-50 p-3">
@@ -319,7 +319,7 @@
               </div>
             )}
             <div className="mt-2 text-[11px] text-slate-500">
-              Si vas a usar videos offline, súbelos al repo (por ejemplo en <b>/videos</b>) y usa rutas como <b>./videos/...</b>.
+              <b>.Copyright © {year} Danny Sebastian Ordóñez Alberca y Jose Luis Vilchez Tornero</b>.
             </div>
           </div>
 
@@ -492,22 +492,22 @@
 
       const taskMeta = useMemo(()=>({
         stroop: {
-          title: 'Stroop (interferencia)',
-          help: 'Responde, por favor, a la palabra o al color según se indique en la pregunta. Recuerda que no hay respuestas ni buenas ni malas.',
+          title: 'Stroop',
+          help: 'Responde, por favor, a la palabra que lees o al color que ves según se indique en la pregunta.',
           videoSrc: './videos/stroop.mp4',
         },
         hanoi: {
-          title: 'Torre de Hanoi (planificación)',
+          title: 'Torre de Hanoi',
           help: 'Mueve, por favor, todos los discos desde la torre de origen hacia la torre de destino. Recuerda que sólo puedes mover un disco a la vez y no puedes poner un disco grande sobre uno pequeño.',
           videoSrc: './videos/hanoi.mp4',
         },
         corsi: {
-          title: 'Corsi 3×3 (memoria visoespacial)',
+          title: 'Corsi 3×3',
           help: 'Observa, por favor, atentamente la secuencia que los cuadros se iluminarán. Una vez que la secuencia finalice repítela, por favor, en el mismo orden.',
           videoSrc: './videos/corsi.mp4',
         },
         digit: {
-          title: 'Dígitos (memoria verbal)',
+          title: 'Dígitos',
           help: 'Observa, por favor, atentamente la secuencia de números. Luego, por favor, repítela en el mismo orden (directo) o al revés (inverso), según se indique.',
           videoSrc: './videos/digit.mp4',
         }
@@ -593,7 +593,7 @@
 
       return (
         <div className="grid place-items-center gap-6">
-          <div className="text-slate-600 text-sm text-center">{mode==='word' ? <>¿Qué <b>palabra</b> lees?</> : <>¿Qué <b>color</b> ves?</>}</div>
+          <div className="text-slate-600 text-base text-center">{mode==='word' ? <>¿Qué <b>palabra</b> lees?</> : <>¿Qué <b>color</b> ves?</>}</div>
           {stim && <div className={cls('text-5xl font-bold', stim.ink.css)}>{stim.word.name}</div>}
           <div className="w-full max-w-xl grid gap-3">
             <div className="flex flex-wrap justify-center gap-2">
@@ -661,8 +661,8 @@
       const [reqFrom, reqTo]=roundsRef.current[round]||[0,2];
       return (
         <div className="space-y-4">
-          <div className="text-slate-600 text-sm text-center">Selecciona <b>origen</b> y luego <b>destino</b>. Debes mover <b>todos</b> los discos desde <b>{`T${reqFrom+1}`}</b> hasta <b>{`T${reqTo+1}`}</b>.</div>
-          <div className="text-center text-xs text-slate-500">Ronda {round+1} / {roundsRef.current.length} — Objetivo: <b>{`T${reqFrom+1} → T${reqTo+1}`}</b></div>
+          <div className="text-slate-600 text-base text-center">Selecciona <b>origen</b> y luego <b>destino</b>. Debes mover <b>todos</b> los discos desde <b>{`T${reqFrom+1}`}</b> hasta <b>{`T${reqTo+1}`}</b>.</div>
+          <div className="text-center text-sm text-slate-500">Ronda {round+1} / {roundsRef.current.length} — Objetivo: <b>{`T${reqFrom+1} → T${reqTo+1}`}</b></div>
           <div className="w-full overflow-hidden">
             <div className="flex flex-nowrap gap-4 justify-center items-end mx-auto">
               {pegs.map((peg,pi)=>(
@@ -732,7 +732,7 @@
 
       return (
         <div className="space-y-4">
-          <div className="text-slate-600 text-sm text-center">Repite la secuencia tocando los cuadros en el <b>mismo orden</b>.</div>
+          <div className="text-slate-600 text-base text-center">Repite la secuencia tocando los cuadros en el <b>mismo orden</b>.</div>
           <div className="grid grid-cols-3 gap-3 w-64 mx-auto">
             {Array.from({length:9},(_,i)=>{
               const show=phase==='show'&&flash===i;
@@ -742,7 +742,7 @@
               return <button key={i} onClick={()=>press(i)} className={cls('aspect-square rounded border transition-colors', clsCell)} />;
             })}
           </div>
-          <div className="text-center text-xs text-slate-500">Ensayo {trial+1} / 9</div>
+          <div className="text-center text-sm text-slate-500">Ensayo {trial+1} / 9</div>
         </div>
       );
     }
@@ -827,10 +827,10 @@
 
       return (
         <div className="space-y-4">
-          <div className="text-slate-600 text-sm text-center">
+          <div className="text-slate-600 text-base text-center">
             Recuerda la secuencia de números y repítela {dir==='forward' ? <b>en el mismo orden</b> : <b>al revés</b>}.
           </div>
-          <div className="text-center text-xs text-slate-500">Ensayo {trial+1} / {PLAN.length} — Longitud: {len} — Modo: {dir==='forward'? 'Directo':'Inverso'}</div>
+          <div className="text-center text-sm text-slate-500">Ensayo {trial+1} / {PLAN.length} — Longitud: {len} — Orden: {dir==='forward'? 'Directo':'Inverso'}</div>
 
           <div className="grid place-items-center">
             <div className={cls('h-20 min-w-[12rem] grid place-items-center rounded-xl border text-3xl font-semibold', phase==='show'?'bg-slate-900 text-white':'bg-white')}>{display}</div>
@@ -876,7 +876,7 @@
       return (
         <section id="report-root" className="space-y-4">
           <h2 className="text-lg font-semibold">Informe de resultados</h2>
-          <div className="text-xs text-slate-500">{participant?.name||'Participante'} · ID: {participant?.idNumber||'—'} · Comunidad: {participant?.community||'—'} · F. nac.: {participant?.birthDate||'—'} · {new Date(completedAt).toLocaleString()} · Estado: <b>{status==='cancelled'?'CANCELADA':'COMPLETADA'}</b></div>
+          <div className="text-base text-slate-600">{participant?.name||'Participante'} · ID: {participant?.idNumber||'—'} · Comunidad: {participant?.community||'—'} · F. nac.: {participant?.birthDate||'—'} · {new Date(completedAt).toLocaleString()} · Estado: <b>{status==='cancelled'?'CANCELADA':'COMPLETADA'}</b></div>
           <div className="grid gap-3">
             {scores.map(s=> (
               <div key={s.task} className="rounded-2xl border p-4 bg-white">
