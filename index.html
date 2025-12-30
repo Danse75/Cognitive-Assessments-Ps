@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Evaluaciones neuropsicológicas</title>
+  <title>Evaluaciones neuropsicológicas online</title>
   <link rel="icon" href="data:,">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -30,21 +30,21 @@
     const defer = (fn) => (...args) => requestAnimationFrame(() => fn(...args));
 
     // --- Persistencia básica para reanudación ---
-    const SAVE_KEY = 'efx.save.v3.1';
+    const SAVE_KEY = 'efx.save.v1';
     function loadSave(){ try { return JSON.parse(localStorage.getItem(SAVE_KEY)||'{}'); } catch { return {}; } }
     function saveState(patch){ try { const cur = loadSave(); const next = {...cur, ...patch}; localStorage.setItem(SAVE_KEY, JSON.stringify(next)); } catch {} }
     function clearSave(){ try { localStorage.removeItem(SAVE_KEY); } catch {} }
 
     // Apps Script endpoint (fijo en HTML)
-    const DEFAULT_ENDPOINT = 'https://script.google.com/macros/s/AKfycby2PrfZvshKeIBmu64__2sBGYIxQ8oDSFc8LfhAnC0PDB6SUs2X1j4FioQvwM1tJP9TWw/exec';
+    const DEFAULT_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyZAFBl7fDQRG7oLR9TGP5Ka3vrHeGUf3-HQ5JuPf055lpFdLriMjdvLBBgJ8TX2KZhGg/exec';
 
     // === OFFLINE OUTBOX + runId (para sincronizar al reconectar) ===
     function uuidv4(){ return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);}); }
-    const RUN_KEY='efx.runId.v3.1';
+    const RUN_KEY='efx.runId.v1';
     function getRunId(){ let id=localStorage.getItem(RUN_KEY); if(!id){ id=uuidv4(); localStorage.setItem(RUN_KEY,id);} return id; }
     function newRunId(){ const id=uuidv4(); try{ localStorage.setItem(RUN_KEY,id);}catch{} return id; }
     function resetRunId(){ try{ localStorage.removeItem(RUN_KEY); } catch{} }
-    const OUTBOX_KEY='efx.outbox.v3.1';
+    const OUTBOX_KEY='efx.outbox.v1';
     function readOutbox(){ try{ return JSON.parse(localStorage.getItem(OUTBOX_KEY)||'[]'); }catch{return [];} }
     function writeOutbox(list){ try{ localStorage.setItem(OUTBOX_KEY, JSON.stringify(list)); }catch{} }
     function enqueueOutbox(item){ const q=readOutbox(); q.push(item); writeOutbox(q); }
@@ -236,7 +236,7 @@
             {view==='start' && (
               <section className="space-y-4">
                 <h2 className="text-lg font-semibold">Inicio</h2>
-                <p className="text-slate-600 text-base">Completa los siguientes apartados con los datos solicitados.</p>
+                <p className="text-slate-600 text-sm">Completarás todas las pruebas. Elige con cuál deseas empezar e ingresa tus datos.</p>
                 <div className="grid gap-3 rounded-2xl border bg-white p-4">
                   <div className="grid gap-1">
                     <label className="text-xs text-slate-500">Nombres y apellidos</label>
@@ -257,7 +257,7 @@
                     <input className="rounded-xl border px-3 py-2"
                            value={participant.community}
                            onChange={e=>setParticipant(p=>({...p,community:e.target.value}))}
-                           placeholder="Por ejemplo.: Los Encuentros"/>
+                           placeholder="Ej.: Los Encuentros"/>
                   </div>
                   <div className="grid gap-1">
                     <label className="text-xs text-slate-500">Fecha de nacimiento</label>
@@ -298,6 +298,7 @@
 
     // Intro por tarea (video + botón iniciar) -------------------
     function TaskIntro({title, help, videoSrc, onStart}){
+      const year = new Date().getFullYear();
       const hasVideo = !!videoSrc;
       return (
         <div className="space-y-4">
@@ -314,12 +315,10 @@
                 Tu navegador no soporta video.
               </video>
             ) : (
-              <div className="text-sm text-slate-600">
-                Video no configurado.
-              </div>
+              <div className="text-sm text-slate-600">Video no configurado.</div>
             )}
             <div className="mt-2 text-[11px] text-slate-500">
-              <b>.Copyright © {year} Danny Sebastian Ordóñez Alberca y Jose Luis Vilchez Tornero</b>.
+              <b>Copyright © {year} Danny Sebastian Ordóñez Alberca y Jose Luis Vilchez Tornero</b>.
             </div>
           </div>
 
@@ -368,7 +367,7 @@
                     Iniciar
                   </button>
                   <div className="text-[11px] leading-snug text-slate-500">
-                    Copyright © {year} Danny Sebastian Ordóñez Alberca y Jose Luis Vilchez Tornero. No part of this
+                    Copyright © {year} Danny Sebastian Ordoñez Alberca y José Luis Vílchez Tornero. No part of this
                     repository may be copied, modified, distributed, or used for commercial, academic, or clinical purposes
                     without explicit written permission from the author.
                   </div>
@@ -402,10 +401,10 @@
         <section className="space-y-4">
           <h2 className="text-lg font-semibold">Consentimiento informado</h2>
           <div className="rounded-2xl border p-4 bg-white text-sm leading-relaxed text-slate-700 max-h-64 overflow-auto">
-            <p><b>Propósito:</b> evaluar funciones cognitivas mediante tareas de Psicología experimental.</p>
-            <p><b>Duración:</b> El tiempo aproximado es de 8–12 minutos. Puede tomar descansos si lo necesita.</p>
-            <p><b>Riesgos:</b> mínimos como, por ejemplo, fatiga y/o aburrimiento.</p>
-            <p><b>Datos:</b> se recogen tiempos de reacción, aciertos/errores y metadatos técnicos con fines clínicos, académicos y de investigación.</p>
+            <p><b>Propósito:</b> evaluar funciones cognitivas mediante tareas breves en línea.</p>
+            <p><b>Duración:</b> 8–12 minutos. Puede tomar descansos si lo necesita.</p>
+            <p><b>Riesgos:</b> mínimos (fatiga/aburrimiento).</p>
+            <p><b>Datos:</b> se recogen tiempos de reacción, aciertos/errores y metadatos técnicos.</p>
           </div>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" checked={ok} onChange={e=>setOk(e.target.checked)} className="mt-1"/>
@@ -479,36 +478,36 @@
       const progressKey = key==='digit' ? 'digit_span' : key;
 
       // === Video + botón "Iniciar" antes de cada prueba ===
-      // Guardamos un registro simple para no volver a mostrar el intro si ya se inició esa tarea.
-      const introKey = `introDone_${progressKey}`;
-      const [introDone,setIntroDone] = useState(()=>{
-        const s = loadSave();
-        return !!(s && s[introKey]);
-      });
-
-      // Si ya hay progreso dentro de esa tarea, no mostramos intro (reanudar)
+      // Requisito: que el video aparezca *cada vez* que inicia una prueba o cambia de prueba.
+      // Regla: si se está reanudando una tarea ya empezada (hay ensayos guardados), NO se muestra el intro.
       const alreadyStarted = (progress[progressKey]||0) > 0;
-      const shouldShowIntro = !alreadyStarted && !introDone;
+      const [showIntro, setShowIntro] = useState(!alreadyStarted);
+
+      // Cada vez que cambia la tarea (i/progressKey) recalculamos si debe mostrarse el video.
+      useEffect(()=>{
+        const startedNow = (progress[progressKey]||0) > 0;
+        setShowIntro(!startedNow);
+      }, [i, progressKey]);
 
       const taskMeta = useMemo(()=>({
         stroop: {
-          title: 'Stroop',
-          help: 'Responde, por favor, a la palabra que lees o al color que ves según se indique en la pregunta.',
+          title: 'Stroop (interferencia)',
+          help: 'Vas a responder a la palabra o al color según se indique. Responde lo más rápido posible, sin sacrificar precisión.',
           videoSrc: './videos/stroop.mp4',
         },
         hanoi: {
-          title: 'Torre de Hanoi',
-          help: 'Mueve, por favor, todos los discos desde la torre de origen hacia la torre de destino. Recuerda que sólo puedes mover un disco a la vez y no puedes poner un disco grande sobre uno pequeño.',
+          title: 'Torre de Hanoi (planificación)',
+          help: 'Selecciona una torre origen y luego una torre destino. Sólo se puede mover un disco a la vez y no puedes poner un disco grande sobre uno pequeño.',
           videoSrc: './videos/hanoi.mp4',
         },
         corsi: {
-          title: 'Corsi 3×3',
-          help: 'Observa, por favor, atentamente la secuencia que los cuadros se iluminarán. Una vez que la secuencia finalice repítela, por favor, en el mismo orden.',
+          title: 'Corsi 3×3 (memoria visoespacial)',
+          help: 'Observa la secuencia de cuadros y repítela en el mismo orden.',
           videoSrc: './videos/corsi.mp4',
         },
         digit: {
-          title: 'Dígitos',
-          help: 'Observa, por favor, atentamente la secuencia de números. Luego, por favor, repítela en el mismo orden (directo) o al revés (inverso), según se indique.',
+          title: 'Dígitos (memoria verbal)',
+          help: 'Observa la secuencia de números. Luego repítela en el mismo orden (directo) o al revés (inverso), según se indique.',
           videoSrc: './videos/digit.mp4',
         }
       }),[]);
@@ -516,8 +515,7 @@
       const meta = taskMeta[key] || {title:String(key), help:'', videoSrc:''};
 
       function startTask(){
-        setIntroDone(true);
-        saveState({ [introKey]: true });
+        setShowIntro(false);
       }
 
       return (
@@ -528,7 +526,7 @@
           </div>
 
           <div className="rounded-2xl border bg-white p-4">
-            {shouldShowIntro ? (
+            {showIntro ? (
               <TaskIntro
                 title={meta.title}
                 help={meta.help}
@@ -593,7 +591,7 @@
 
       return (
         <div className="grid place-items-center gap-6">
-          <div className="text-slate-600 text-base text-center">{mode==='word' ? <>¿Qué <b>palabra</b> lees?</> : <>¿Qué <b>color</b> ves?</>}</div>
+          <div className="text-slate-600 text-sm text-center">{mode==='word' ? <>¿Qué <b>palabra</b> lees?</> : <>¿Qué <b>color</b> ves?</>}</div>
           {stim && <div className={cls('text-5xl font-bold', stim.ink.css)}>{stim.word.name}</div>}
           <div className="w-full max-w-xl grid gap-3">
             <div className="flex flex-wrap justify-center gap-2">
@@ -661,8 +659,8 @@
       const [reqFrom, reqTo]=roundsRef.current[round]||[0,2];
       return (
         <div className="space-y-4">
-          <div className="text-slate-600 text-base text-center">Selecciona <b>origen</b> y luego <b>destino</b>. Debes mover <b>todos</b> los discos desde <b>{`T${reqFrom+1}`}</b> hasta <b>{`T${reqTo+1}`}</b>.</div>
-          <div className="text-center text-sm text-slate-500">Ronda {round+1} / {roundsRef.current.length} — Objetivo: <b>{`T${reqFrom+1} → T${reqTo+1}`}</b></div>
+          <div className="text-slate-600 text-sm text-center">Selecciona <b>origen</b> y luego <b>destino</b>. Debes mover <b>todos</b> los discos desde <b>{`T${reqFrom+1}`}</b> hasta <b>{`T${reqTo+1}`}</b>.</div>
+          <div className="text-center text-xs text-slate-500">Ronda {round+1} / {roundsRef.current.length} — Objetivo: <b>{`T${reqFrom+1} → T${reqTo+1}`}</b></div>
           <div className="w-full overflow-hidden">
             <div className="flex flex-nowrap gap-4 justify-center items-end mx-auto">
               {pegs.map((peg,pi)=>(
@@ -688,6 +686,7 @@
 
     // Corsi 3×3 -----------------------------------------------
     function Corsi({onTrial,onDone,startAt=0}){
+      // Duración de cada cuadro iluminado durante la fase de memorización (en ms)
       const [trial,setTrial]=useState(startAt);
       const [phase,setPhase]=useState('show'); // show | input | final
       const [seq,setSeq]=useState([]);
@@ -732,7 +731,7 @@
 
       return (
         <div className="space-y-4">
-          <div className="text-slate-600 text-base text-center">Repite la secuencia tocando los cuadros en el <b>mismo orden</b>.</div>
+          <div className="text-slate-600 text-sm text-center">Repite la secuencia tocando los cuadros en el <b>mismo orden</b>.</div>
           <div className="grid grid-cols-3 gap-3 w-64 mx-auto">
             {Array.from({length:9},(_,i)=>{
               const show=phase==='show'&&flash===i;
@@ -742,7 +741,7 @@
               return <button key={i} onClick={()=>press(i)} className={cls('aspect-square rounded border transition-colors', clsCell)} />;
             })}
           </div>
-          <div className="text-center text-sm text-slate-500">Ensayo {trial+1} / 9</div>
+          <div className="text-center text-xs text-slate-500">Ensayo {trial+1} / 9</div>
         </div>
       );
     }
@@ -827,10 +826,10 @@
 
       return (
         <div className="space-y-4">
-          <div className="text-slate-600 text-base text-center">
+          <div className="text-slate-600 text-sm text-center">
             Recuerda la secuencia de números y repítela {dir==='forward' ? <b>en el mismo orden</b> : <b>al revés</b>}.
           </div>
-          <div className="text-center text-sm text-slate-500">Ensayo {trial+1} / {PLAN.length} — Longitud: {len} — Orden: {dir==='forward'? 'Directo':'Inverso'}</div>
+          <div className="text-center text-xs text-slate-500">Ensayo {trial+1} / {PLAN.length} — Longitud: {len} — Modo: {dir==='forward'? 'Directo':'Inverso'}</div>
 
           <div className="grid place-items-center">
             <div className={cls('h-20 min-w-[12rem] grid place-items-center rounded-xl border text-3xl font-semibold', phase==='show'?'bg-slate-900 text-white':'bg-white')}>{display}</div>
@@ -876,7 +875,7 @@
       return (
         <section id="report-root" className="space-y-4">
           <h2 className="text-lg font-semibold">Informe de resultados</h2>
-          <div className="text-base text-slate-600">{participant?.name||'Participante'} · ID: {participant?.idNumber||'—'} · Comunidad: {participant?.community||'—'} · F. nac.: {participant?.birthDate||'—'} · {new Date(completedAt).toLocaleString()} · Estado: <b>{status==='cancelled'?'CANCELADA':'COMPLETADA'}</b></div>
+          <div className="text-xs text-slate-500">{participant?.name||'Participante'} · ID: {participant?.idNumber||'—'} · Comunidad: {participant?.community||'—'} · F. nac.: {participant?.birthDate||'—'} · {new Date(completedAt).toLocaleString()} · Estado: <b>{status==='cancelled'?'CANCELADA':'COMPLETADA'}</b></div>
           <div className="grid gap-3">
             {scores.map(s=> (
               <div key={s.task} className="rounded-2xl border p-4 bg-white">
@@ -956,3 +955,4 @@
   </script>
 </body>
 </html>
+<!-- canvas: reactivado -->
