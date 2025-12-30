@@ -223,7 +223,7 @@
                 <div className="w-8 h-8 rounded-xl bg-slate-900"></div>
                 <div>
                   <h1 className="text-xl font-bold">Evaluaciones neuropsicológicas</h1>
-                  <p className="text-xs text-slate-500">Demo ejecutable</p>
+                  <p className="text-xs text-slate-500">Neuropsicología y Psicología experimental</p>
                 </div>
               </div>
               <span className="text-xs text-slate-500">{view.toUpperCase()}</span>
@@ -236,7 +236,7 @@
             {view==='start' && (
               <section className="space-y-4">
                 <h2 className="text-lg font-semibold">Inicio</h2>
-                <p className="text-slate-600 text-sm">Completarás todas las pruebas. Elige con cuál deseas empezar e ingresa tus datos.</p>
+                <p className="text-slate-600 text-base">A continuación, por favor, ingresa los datos solicitados.</p>
                 <div className="grid gap-3 rounded-2xl border bg-white p-4">
                   <div className="grid gap-1">
                     <label className="text-xs text-slate-500">Nombres y apellidos</label>
@@ -246,7 +246,7 @@
                            placeholder="Nombres y apellidos"/>
                   </div>
                   <div className="grid gap-1">
-                    <label className="text-xs text-slate-500">ID (cédula / ID number)</label>
+                    <label className="text-xs text-slate-500">ID (cédula / pasaporte)</label>
                     <input className="rounded-xl border px-3 py-2"
                            value={participant.idNumber}
                            onChange={e=>setParticipant(p=>({...p,idNumber:e.target.value}))}
@@ -257,7 +257,7 @@
                     <input className="rounded-xl border px-3 py-2"
                            value={participant.community}
                            onChange={e=>setParticipant(p=>({...p,community:e.target.value}))}
-                           placeholder="Ej.: Los Encuentros"/>
+                           placeholder="Por ejemplo: Los Encuentros"/>
                   </div>
                   <div className="grid gap-1">
                     <label className="text-xs text-slate-500">Fecha de nacimiento</label>
@@ -305,7 +305,7 @@
           <div className="space-y-1">
             <h3 className="text-lg font-semibold">{title}</h3>
             {help ? <p className="text-sm text-slate-600">{help}</p> : null}
-            <p className="text-base text-slate-500">Mira el video y cuando estés listo, presiona <b>Iniciar</b>.</p>
+            <p className="text-base text-slate-500">Mira el video de instrucciones y cuando estés listo, presiona <b>Iniciar</b>.</p>
           </div>
 
           <div className="rounded-2xl border bg-slate-50 p-3">
@@ -352,7 +352,7 @@
                   </p>
                   <p className="text-sm leading-relaxed">
                     Antes de empezar, busca un lugar tranquilo, sin interrupciones. Si por algún motivo deseas detenerte,
-                    podrás finalizar y ver el informe con lo que hayas respondido.
+                    podrás finalizar y ver el informe con lo que hayas respondido. Esto sin ningún tipo de penalización o sanción.
                   </p>
                   <p className="text-sm leading-relaxed">
                     Cuando estés listo, presiona el botón para iniciar.
@@ -400,11 +400,11 @@
       return (
         <section className="space-y-4">
           <h2 className="text-lg font-semibold">Consentimiento informado</h2>
-          <div className="rounded-2xl border p-4 bg-white text-sm leading-relaxed text-slate-700 max-h-64 overflow-auto">
-            <p><b>Propósito:</b> evaluar funciones cognitivas mediante tareas breves en línea.</p>
-            <p><b>Duración:</b> 8–12 minutos. Puede tomar descansos si lo necesita.</p>
-            <p><b>Riesgos:</b> mínimos (fatiga/aburrimiento).</p>
-            <p><b>Datos:</b> se recogen tiempos de reacción, aciertos/errores y metadatos técnicos.</p>
+          <div className="rounded-2xl border p-4 bg-white text-base leading-relaxed text-slate-700 max-h-64 overflow-auto">
+            <p><b>Propósito:</b> evaluar funciones cognitivas como <b>atención<b>, <b>inhibición de respuestas automáticas<b>, <b>planificación<b>, y <b>memoria de trabajo<b> mediante tareas de Psicología experimental y Neuropsicología.</p>
+            <p><b>Duración:</b> la ejecución de las tareas tardará entre 8–12 minutos. Puede tomar descansos si lo necesita.</p>
+            <p><b>Riesgos:</b> mínimos como, por ejemplo, fatiga y/o aburrimiento.</p>
+            <p><b>Datos:</b> se recogen tiempos de reacción, aciertos/errores y metadatos técnicos con fines clínicos, académicos y de investigación.</p>
           </div>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" checked={ok} onChange={e=>setOk(e.target.checked)} className="mt-1"/>
@@ -439,7 +439,7 @@
       return (
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">Chequeo de dispositivo</h2>
-          <ul className="text-sm text-slate-700 grid gap-1">
+          <ul className="text-base text-slate-700 grid gap-1">
             <li>📱 Tamaño de pantalla: {okScreen?"OK":"Muy pequeño"}</li>
             <li>🪟 Ventana activa: {okFocus?"OK":"Volviste desde otra pestaña"}</li>
             <li>⌨️ Teclado: {okKey?"Barra espaciadora detectada":"Pulsa barra espaciadora para probar"}</li>
@@ -491,23 +491,23 @@
 
       const taskMeta = useMemo(()=>({
         stroop: {
-          title: 'Stroop (interferencia)',
-          help: 'Vas a responder a la palabra o al color según se indique. Responde lo más rápido posible, sin sacrificar precisión.',
+          title: 'Stroop',
+          help: 'En esta tarea responde, por favor, a la palabra que lees o al color que ves según se indique en la pregunta. No dudes en preguntar al evaluador si tienes alguna duda.',
           videoSrc: './videos/stroop.mp4',
         },
         hanoi: {
-          title: 'Torre de Hanoi (planificación)',
-          help: 'Selecciona una torre origen y luego una torre destino. Sólo se puede mover un disco a la vez y no puedes poner un disco grande sobre uno pequeño.',
+          title: 'Torre de Hanoi',
+          help: 'En esta tarea mueve, por favor, los discos desde la torre origen hacia la torre destino. Sólo se puede mover un disco a la vez y no puedes poner un disco grande sobre uno pequeño. No dudes en preguntar al evaluador si tienes alguna duda',
           videoSrc: './videos/hanoi.mp4',
         },
         corsi: {
-          title: 'Corsi 3×3 (memoria visoespacial)',
-          help: 'Observa la secuencia de cuadros y repítela en el mismo orden.',
+          title: 'Corsi 3×3',
+          help: 'En esta tarea observa, por favor, la secuencia de cuadros iluminaos de azul y repítela en el mismo orden. No dudes en preguntar al evaluador si tienes alguna duda',
           videoSrc: './videos/corsi.mp4',
         },
         digit: {
-          title: 'Dígitos (memoria verbal)',
-          help: 'Observa la secuencia de números. Luego repítela en el mismo orden (directo) o al revés (inverso), según se indique.',
+          title: 'Dígitos',
+          help: 'En esta tarea observa, por favor, la secuencia de números y repítela en el orden que se indica: mismo orden (directo) o al revés (inverso). No dudes en preguntar al evaluador si tienes alguna duda',
           videoSrc: './videos/digit.mp4',
         }
       }),[]);
@@ -591,7 +591,7 @@
 
       return (
         <div className="grid place-items-center gap-6">
-          <div className="text-slate-600 text-sm text-center">{mode==='word' ? <>¿Qué <b>palabra</b> lees?</> : <>¿Qué <b>color</b> ves?</>}</div>
+          <div className="text-slate-600 text-base text-center">{mode==='word' ? <>¿Qué <b>palabra</b> lees?</> : <>¿Qué <b>color</b> ves?</>}</div>
           {stim && <div className={cls('text-5xl font-bold', stim.ink.css)}>{stim.word.name}</div>}
           <div className="w-full max-w-xl grid gap-3">
             <div className="flex flex-wrap justify-center gap-2">
@@ -601,7 +601,7 @@
               ))}
             </div>
           </div>
-          <div className="text-xs text-slate-500">Ensayo {trial+1} / {N_TRIALS}</div>
+          <div className="text-sm text-slate-500">Ensayo {trial+1} / {N_TRIALS}</div>
         </div>
       );
     }
@@ -659,8 +659,8 @@
       const [reqFrom, reqTo]=roundsRef.current[round]||[0,2];
       return (
         <div className="space-y-4">
-          <div className="text-slate-600 text-sm text-center">Selecciona <b>origen</b> y luego <b>destino</b>. Debes mover <b>todos</b> los discos desde <b>{`T${reqFrom+1}`}</b> hasta <b>{`T${reqTo+1}`}</b>.</div>
-          <div className="text-center text-xs text-slate-500">Ronda {round+1} / {roundsRef.current.length} — Objetivo: <b>{`T${reqFrom+1} → T${reqTo+1}`}</b></div>
+          <div className="text-slate-600 text-base text-center">Selecciona <b>origen</b> y luego <b>destino</b>. Debes mover <b>todos</b> los discos desde <b>{`T${reqFrom+1}`}</b> hasta <b>{`T${reqTo+1}`}</b>.</div>
+          <div className="text-center text-sm text-slate-500">Ronda {round+1} / {roundsRef.current.length} — Objetivo: <b>{`T${reqFrom+1} → T${reqTo+1}`}</b></div>
           <div className="w-full overflow-hidden">
             <div className="flex flex-nowrap gap-4 justify-center items-end mx-auto">
               {pegs.map((peg,pi)=>(
@@ -731,7 +731,7 @@
 
       return (
         <div className="space-y-4">
-          <div className="text-slate-600 text-sm text-center">Repite la secuencia tocando los cuadros en el <b>mismo orden</b>.</div>
+          <div className="text-slate-600 text-base text-center">Repite la secuencia tocando los cuadros en el <b>mismo orden</b>.</div>
           <div className="grid grid-cols-3 gap-3 w-64 mx-auto">
             {Array.from({length:9},(_,i)=>{
               const show=phase==='show'&&flash===i;
@@ -741,7 +741,7 @@
               return <button key={i} onClick={()=>press(i)} className={cls('aspect-square rounded border transition-colors', clsCell)} />;
             })}
           </div>
-          <div className="text-center text-xs text-slate-500">Ensayo {trial+1} / 9</div>
+          <div className="text-center text-sm text-slate-500">Ensayo {trial+1} / 9</div>
         </div>
       );
     }
@@ -826,10 +826,10 @@
 
       return (
         <div className="space-y-4">
-          <div className="text-slate-600 text-sm text-center">
+          <div className="text-slate-600 text-base text-center">
             Recuerda la secuencia de números y repítela {dir==='forward' ? <b>en el mismo orden</b> : <b>al revés</b>}.
           </div>
-          <div className="text-center text-xs text-slate-500">Ensayo {trial+1} / {PLAN.length} — Longitud: {len} — Modo: {dir==='forward'? 'Directo':'Inverso'}</div>
+          <div className="text-center text-sm text-slate-500">Ensayo {trial+1} / {PLAN.length} — Longitud: {len} — Modo: {dir==='forward'? 'Directo':'Inverso'}</div>
 
           <div className="grid place-items-center">
             <div className={cls('h-20 min-w-[12rem] grid place-items-center rounded-xl border text-3xl font-semibold', phase==='show'?'bg-slate-900 text-white':'bg-white')}>{display}</div>
@@ -875,7 +875,7 @@
       return (
         <section id="report-root" className="space-y-4">
           <h2 className="text-lg font-semibold">Informe de resultados</h2>
-          <div className="text-xs text-slate-500">{participant?.name||'Participante'} · ID: {participant?.idNumber||'—'} · Comunidad: {participant?.community||'—'} · F. nac.: {participant?.birthDate||'—'} · {new Date(completedAt).toLocaleString()} · Estado: <b>{status==='cancelled'?'CANCELADA':'COMPLETADA'}</b></div>
+          <div className="text-base text-slate-500">{participant?.name||'Participante'} · ID: {participant?.idNumber||'—'} · Comunidad: {participant?.community||'—'} · F. nac.: {participant?.birthDate||'—'} · {new Date(completedAt).toLocaleString()} · Estado: <b>{status==='cancelled'?'CANCELADA':'COMPLETADA'}</b></div>
           <div className="grid gap-3">
             {scores.map(s=> (
               <div key={s.task} className="rounded-2xl border p-4 bg-white">
