@@ -1,42 +1,38 @@
-/* Service Worker para modo offline + caché (incluye videos) */
-const CACHE = 'efx-cache-v3.1'; // <-- SUBIMOS la versión para forzar actualización
+/* Service Worker (offline) – compatible con el nuevo index (sin Babel y sin videos) */
+const CACHE = 'efx-cache-v3.1'; // Sube esta versión cuando quieras forzar actualización
 
-// Ajusta estos nombres si tus archivos se llaman distinto o están en otra carpeta
-const VIDEO_ASSETS = [
-  './videos/stroop.mp4',
-  './videos/hanoi.mp4',
-  './videos/corsi.mp4',
-  './videos/digit.mp4',
-];
-
-const ASSETS = [
+// Archivos que realmente usa el nuevo index
+const CORE_ASSETS = [
   './',
   './index.html',
   './sw.js',
-  ...VIDEO_ASSETS,
+];
 
-  // CDNs (se almacenan como respuestas "opaque")
+// CDNs usados por el index (se cachean como "opaque" con no-cors)
+const CDN_ASSETS = [
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/react@18/umd/react.development.js',
   'https://unpkg.com/react-dom@18/umd/react-dom.development.js',
-  'https://unpkg.com/@babel/standalone/babel.min.js',
 ];
 
+// Precaching robusto (uno por uno; si falla uno, no tumba todo)
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
 
-    try {
-      const requests = ASSETS.map((u) => {
+    const all = [...CORE_ASSETS, ...CDN_ASSETS];
+    for (const u of all) {
+      try {
         const isRemote = /^https?:\/\//i.test(u);
-        // Para remotos: no-cors; para locales: normal
-        return isRemote ? new Request(u, { mode: 'no-cors' }) : new Request(u);
-      });
-
-      await cache.addAll(requests);
-    } catch (e) {
-      // Si un recurso falla, no tumbamos toda la instalación
-      console.warn('Precache parcial:', e);
+        const req = isRemote
+          ? new Request(u, { mode: 'no-cors' })
+          : new Request(u, { cache: 'reload' });
+        await cache.add(req);
+      } catch (e) {
+        // Precache parcial está permitido; seguimos
+        // (Esto es normal si el CDN está bloqueado en el primer load)
+        // console.warn('Precache omitido:', u, e);
+      }
     }
 
     self.skipWaiting();
@@ -51,68 +47,29 @@ self.addEventListener('activate', (event) => {
   })());
 });
 
-// --- Helper: responder videos cacheados incluso si el navegador pide "por partes" (Range) ---
-async function respondWithRange_(req, cachedResponse) {
-  const rangeHeader = req.headers.get('range');
-
-  // Si NO hay range, devolvemos el video completo
-  if (!rangeHeader) return cachedResponse;
-
-  // Si hay range, devolvemos sólo el pedazo que pide el navegador
-  const buf = await cachedResponse.arrayBuffer();
-  const size = buf.byteLength;
-
-  // Formato típico: "bytes=0-"
-  const m = /bytes=(\d+)-(\d+)?/.exec(rangeHeader);
-  if (!m) return cachedResponse;
-
-  const start = Number(m[1]);
-  let end = m[2] ? Number(m[2]) : (size - 1);
-  if (isNaN(start) || isNaN(end) || start > end || start >= size) {
-    return new Response(null, { status: 416 }); // Range Not Satisfiable
-  }
-  end = Math.min(end, size - 1);
-
-  const chunk = buf.slice(start, end + 1);
-
-  // Intentamos conservar Content-Type del caché
-  const contentType = cachedResponse.headers.get('content-type') || 'video/mp4';
-
-  return new Response(chunk, {
-    status: 206,
-    headers: {
-      'Content-Type': contentType,
-      'Content-Range': `bytes ${start}-${end}/${size}`,
-      'Accept-Ranges': 'bytes',
-      'Content-Length': String(chunk.byteLength),
-    },
-  });
-}
-
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
-  // Sólo cacheamos GET
+  // Sólo manejamos GET
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
-  const isSameOrigin = url.origin === self.location.origin;
 
-  const isVideo =
-    (req.destination === 'video') ||
-    (isSameOrigin && url.pathname.toLowerCase().endsWith('.mp4'));
-
-  // 1) Navegación: usar red si hay, y si no, index.html cacheado
+  // 1) Navegación (HTML): network-first, fallback a index cacheado
   if (req.mode === 'navigate' || req.destination === 'document') {
     event.respondWith((async () => {
+      const cache = await caches.open(CACHE);
       try {
         const fresh = await fetch(req);
-        const cache = await caches.open(CACHE);
-        cache.put('./index.html', fresh.clone());
+        if (fresh && fresh.ok) {
+          // Guardamos tanto la request real como index.html para asegurar fallback
+          cache.put(req, fresh.clone()).catch(() => {});
+          cache.put('./index.html', fresh.clone()).catch(() => {});
+        }
         return fresh;
       } catch {
-        const cache = await caches.open(CACHE);
-        const cached = await cache.match('./index.html');
+        // Offline: devolvemos index cacheado
+        const cached = await cache.match('./index.html', { ignoreSearch: true });
         if (cached) return cached;
 
         return new Response(
@@ -124,55 +81,33 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2) Videos: servir desde caché (incluyendo Range) y actualizar en segundo plano
-  if (isVideo) {
-    event.respondWith((async () => {
-      const cache = await caches.open(CACHE);
-
-      // Para videos locales, ignoramos parámetros (?v=...) si existieran
-      const cacheKey = isSameOrigin ? new Request(url.pathname, { headers: req.headers }) : req;
-
-      const cached = await cache.match(cacheKey, { ignoreSearch: true });
-
-      if (cached) {
-        // Actualizar en segundo plano (si hay internet)
-        fetch(req).then(res => {
-          if (res && res.ok) cache.put(cacheKey, res.clone());
-        }).catch(() => {});
-
-        return respondWithRange_(req, cached);
-      }
-
-      // Si no está cacheado aún, intentamos red; si sale bien, lo guardamos
-      try {
-        const res = await fetch(req);
-        if (res && res.ok) cache.put(cacheKey, res.clone());
-        return res;
-      } catch {
-        // Sin caché y sin red: no hay video para mostrar
-        return new Response('', { status: 204 });
-      }
-    })());
-    return;
-  }
-
-  // 3) Resto de recursos: cache-first + actualización en segundo plano
+  // 2) Resto de recursos: cache-first + actualización en segundo plano (SWR)
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(req, { ignoreSearch: true });
 
+    // Si hay caché, devolvemos caché y actualizamos en segundo plano
     if (cached) {
-      fetch(req).then(res => {
-        if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone());
-      }).catch(() => {});
+      event.waitUntil((async () => {
+        try {
+          const fresh = await fetch(req);
+          if (fresh && (fresh.ok || fresh.type === 'opaque')) {
+            await cache.put(req, fresh.clone());
+          }
+        } catch {}
+      })());
       return cached;
     }
 
+    // Si no hay caché, intentamos red y guardamos
     try {
-      const res = await fetch(req);
-      if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone());
-      return res;
+      const fresh = await fetch(req);
+      if (fresh && (fresh.ok || fresh.type === 'opaque')) {
+        cache.put(req, fresh.clone()).catch(() => {});
+      }
+      return fresh;
     } catch {
+      // No hay red y no había caché
       return new Response('', { status: 204 });
     }
   })());
