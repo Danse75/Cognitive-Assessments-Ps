@@ -278,15 +278,15 @@
         return h('section', {className:'space-y-4'},
           h('h2', {className:'text-lg font-semibold'}, 'Consentimiento informado'),
           // Texto justificado (sin tokens corruptos)
-          h('div', {className:'rounded-2xl border p-4 bg-white text-base leading-relaxed text-slate-700 max-h-64 overflow-auto text-justify'},
+          h('div', {className:'rounded-2xl border p-4 bg-white text-sm leading-relaxed text-slate-700 max-h-64 overflow-auto text-justify'},
             h('p', null,
               h('b', null, 'Propósito:'),
-              ' evaluar funciones cognitivas como ',
+              ' evaluar funciones ejecutivas como ',
               h('b', null, 'atención'), ', ', h('b', null, 'inhibición de respuestas automáticas'), ', ', h('b', null, 'planificación'), ' y ', h('b', null, 'memoria de trabajo'),
               ' mediante tareas de Psicología experimental y Neuropsicología.'
             ),
-            h('p', null, h('b', null, 'Duración:'), ' la ejecución de las tareas tardará entre 8–12 minutos. Puede tomar descansos si lo necesita.'),
-            h('p', null, h('b', null, 'Riesgos:'), ' mínimos como, por ejemplo, fatiga y/o aburrimiento.'),
+            h('p', null, h('b', null, 'Duración:'), ' la ejecución de las tareas tardará entre 8–12 minutos en los cuales puede tomar descansos si lo necesita.'),
+            h('p', null, h('b', null, 'Riesgos:'), ' estos son mínimos tales como, por ejemplo, fatiga y/o aburrimiento.'),
             h('p', null, h('b', null, 'Datos:'), ' se recogen tiempos de reacción, aciertos/errores y metadatos técnicos con fines clínicos, académicos y de investigación.')
           ),
           h('label', {className:'flex items-start gap-2 text-sm'},
@@ -1325,8 +1325,8 @@
                 ? h('p', {className:'text-sm text-slate-600 leading-relaxed'},
                     meta.help,
                     ' ',
-                    h('span', {className:'font-semibold text-slate-700'}, 'Práctica breve:'),
-                    ' A continuación, tendrás una tarea de práctica que te permitirá familiarizarte con la tarea real que realizarás a posteriori. Al terminar esta prueba de práctica, por favor, presiona ',
+                    h('span', {className:'font-semibold text-slate-700'}, 'Ahora una práctica breve'),
+                    ' tendrás que ejecutar para familiarizarte con la tarea que realizarás a posteriori. Al terminar esta práctica breve, por favor, presiona ',
                     h('b', null, 'Iniciar'),
                     ' para empezar la tarea real.'
                   )
@@ -1340,7 +1340,7 @@
             stage==='ready'
               ? h('div', {className:'rounded-xl border bg-slate-50 p-4'},
                   h('div', {className:'text-sm text-slate-700'},
-                    h('b', null, 'Práctica completada:'), ' tómate un descanso y, por favor, cuando estés listo inicia la tarea real.'
+                    h('b', null, 'La práctica breve ha terminado.'), ' De ser necesario tómate un descanso y, por favor, cuando estés listo inicia la tarea.'
                   ),
                   // Botón más abajo
                   h('div', {className:'pt-4 flex justify-end'},
