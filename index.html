@@ -41,7 +41,6 @@
       }
 
       window.addEventListener('error', (e)=>{
-        // "Script error." suele ocurrir cuando el error viene de un script cross-origin sin CORS.
         const msg = (e && e.message) ? e.message : 'Error de script.';
         const detail = `message: ${msg}\nsource: ${e.filename || '—'}\nline: ${e.lineno || '—'}\ncol: ${e.colno || '—'}`;
         show('Se detectó un error al ejecutar JavaScript. Si ves "Script error.", suele deberse a un fallo en la carga de librerías externas (CDN) o a un error cross-origin.', detail);
@@ -51,7 +50,6 @@
         show('Se detectó un error asincrónico (Promise).', reason);
       });
 
-      // Si React/ReactDOM no cargan, informamos explícitamente.
       setTimeout(()=>{
         if (!window.React || !window.ReactDOM) {
           show(
@@ -71,6 +69,9 @@
       const { useState, useRef, useEffect, useMemo, useCallback } = React;
       const h = React.createElement;
       const F = React.Fragment;
+
+      // Evita el resaltado nativo de toque (iOS/Android) para que el feedback sea sólo el nuestro.
+      try { document.documentElement.style.webkitTapHighlightColor = 'transparent'; } catch(e) {}
 
       // Utils --------------------------------------------------
       function cls(){
@@ -197,6 +198,47 @@
         };
       }
 
+      // Helpers para prácticas (para evitar repeticiones y testear intención)
+      function makeCorsiPracticePlan(){ return [2,2,3,3]; }
+      function makeDigitPracticePlan(){
+        return [
+          {dir:'forward', len:2},
+          {dir:'forward', len:2},
+          {dir:'backward', len:2},
+          {dir:'backward', len:2}
+        ];
+      }
+      function shuffle(a){
+        for(let i=a.length-1;i>0;i--){
+          const j = Math.floor(Math.random()*(i+1));
+          const tmp=a[i]; a[i]=a[j]; a[j]=tmp;
+        }
+        return a;
+      }
+      function pickUniqueCorsiSeq(len, used){
+        const cells = Array.from({length:9},(_,i)=>i);
+        for(let tries=0; tries<50; tries++){
+          const s = shuffle(cells.slice()).slice(0,len);
+          const key = JSON.stringify(s);
+          if(!used.has(key)) { used.add(key); return s; }
+        }
+        // fallback (muy improbable)
+        const s = cells.slice(0,len);
+        used.add(JSON.stringify(s));
+        return s;
+      }
+      function pickUniqueDigitsSeq(len, used){
+        const pool = [0,1,2,3,4,5,6,7,8,9];
+        for(let tries=0; tries<50; tries++){
+          const s = shuffle(pool.slice()).slice(0,len);
+          const key = JSON.stringify(s);
+          if(!used.has(key)) { used.add(key); return s; }
+        }
+        const s = pool.slice(0,len);
+        used.add(JSON.stringify(s));
+        return s;
+      }
+
       // Componentes -------------------------------------------
       function Welcome(props){
         const year = new Date().getFullYear();
@@ -226,20 +268,6 @@
                     `Copyright © ${year} Danny Sebastian Ordoñez Alberca y José Luis Vílchez Tornero. No part of this repository may be copied, modified, distributed, or used for commercial, academic, or clinical purposes without explicit written permission from the author.`
                   )
                 )
-              ),
-              h('div', {className:'border-t'},
-                h('details', {className:'group'},
-                  h('summary', {className:'cursor-pointer select-none px-8 sm:px-10 py-4 text-sm text-slate-600 flex items-center gap-2'},
-                    h('span', {className:'text-slate-500'}, '▶'),
-                    h('span', {className:'group-open:hidden'}, 'Información importante'),
-                    h('span', {className:'hidden group-open:inline'}, 'Información importante')
-                  ),
-                  h('div', {className:'px-8 sm:px-10 pb-6 text-sm text-slate-600 space-y-2'},
-                    h('p', null, h('b', null, 'Duración estimada:'), ' 8–12 minutos.'),
-                    h('p', null, h('b', null, 'Recomendación:'), ' evita cambiar de pestaña o bloquear la pantalla durante la evaluación.'),
-                    h('p', null, h('b', null, 'Modo sin Internet:'), ' si te quedas sin conexión, podrás continuar; al reconectar se sincronizarán los datos.')
-                  )
-                )
               )
             )
           )
@@ -250,7 +278,7 @@
         const [ok,setOk]=useState(false);
         return h('section', {className:'space-y-4'},
           h('h2', {className:'text-lg font-semibold'}, 'Consentimiento informado'),
-          h('div', {className:'rounded-2xl border p-4 bg-white text-base leading-relaxed text-slate-700 max-h-64 overflow-auto'},
+          h('div', {className:'rounded-2xl border p-4 bg-white text-sm leading-relaxed text-slate-700 max-h-64 overflow-auto'},
             h('p', null,
               h('b', null, 'Propósito:'),
               ' evaluar funciones cognitivas como ',
@@ -312,34 +340,6 @@
         );
       }
 
-      function TaskIntro(props){
-        const year = new Date().getFullYear();
-        const hasVideo = !!props.videoSrc;
-        return h('div', {className:'space-y-4'},
-          h('div', {className:'space-y-1'},
-            h('h3', {className:'text-lg font-semibold'}, props.title),
-            props.help ? h('p', {className:'text-sm text-slate-600'}, props.help) : null,
-            h('p', {className:'text-sm text-slate-500'},
-              'Mira el video de demostrativo y cuando estés listo, presiona ', h('b', null, 'Iniciar'), '.'
-            )
-          ),
-          h('div', {className:'rounded-2xl border bg-slate-50 p-3'},
-            hasVideo
-              ? h('video', {controls:true, playsInline:true, className:'w-full rounded-xl bg-black', preload:'metadata'},
-                  h('source', {src: props.videoSrc}),
-                  'Tu navegador no soporta video.'
-                )
-              : h('div', {className:'text-sm text-slate-600'}, 'Video no configurado.'),
-            h('div', {className:'mt-2 text-[11px] text-slate-500'},
-              h('b', null, `Copyright © ${year} Danny Sebastian Ordóñez Alberca y Jose Luis Vilchez Tornero`)
-            )
-          ),
-          h('div', {className:'flex justify-end'},
-            h('button', {onClick: props.onStart, className:'rounded-xl bg-slate-900 text-white px-4 py-2'}, 'Iniciar')
-          )
-        );
-      }
-
       // Tareas -------------------------------------------------
       function Stroop(props){
         const COLORS=[
@@ -353,10 +353,29 @@
           .map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]));
 
         const [trial,setTrial]=useState(props.startAt||0);
+        const trialRef = useRef(props.startAt||0);
+
         const [stim,setStim]=useState(null);
         const [mode,setMode]=useState('word');
         const [opts,setOpts]=useState([]);
+
+        // Feedback sólo para la opción elegida y sólo en el ensayo actual
+        const [pressed,setPressed]=useState(null); // {trial:number, name:string}
+        const pressedT=useRef(null);
+
+        // Bloqueo robusto (evita doble disparo en tablets)
+        const lockedRef = useRef(false);
+        const ignoreClickUntil = useRef(0);
+
         const t0=useRef(0);
+
+        useEffect(()=>()=>{ if(pressedT.current) clearTimeout(pressedT.current); },[]);
+
+        function flashChoice(idx, name){
+          setPressed({trial: idx, name});
+          if(pressedT.current) clearTimeout(pressedT.current);
+          pressedT.current = setTimeout(()=>setPressed(null), 220);
+        }
 
         function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
         function mkStim(){ let w=pick(COLORS), i=pick(COLORS); while(i.name===w.name){ i=pick(COLORS); } return {word:w,ink:i}; }
@@ -365,25 +384,54 @@
 
         function next(idx){
           if(idx>=N_TRIALS){ props.onDone(); return; }
+
+          trialRef.current = idx;
+          setTrial(idx);
+          setPressed(null);
+
           const m = schedule.current[idx];
           const s = mkStim();
           const correctOpt = m==='word' ? s.word : s.ink;
           const wrongOpt = pick(COLORS.filter(c => c.name !== correctOpt.name));
           const shuffled = Math.random() < 0.5 ? [correctOpt, wrongOpt] : [wrongOpt, correctOpt];
+
           setMode(m);
           setStim(s);
           setOpts(shuffled);
           t0.current=performance.now();
+
+          lockedRef.current = false;
         }
 
         function answer(sel){
           if(!stim) return;
+          if(lockedRef.current) return;
+          lockedRef.current = true;
+
+          const idx = trialRef.current;
+          flashChoice(idx, sel.name);
+
           const rt=Math.round(performance.now()-t0.current);
           const isCorrect = mode==='word' ? (sel.name===stim.word.name) : (sel.name===stim.ink.name);
           const task = mode==='word'?'stroop_word':'stroop_color';
-          const idx = trial;
+
           props.onTrial({ task, index:idx, stimulus:{word:stim.word.name,ink:stim.ink.name}, response:{choice:sel.name}, correct:isCorrect, rtMs:rt });
-          const nt = idx+1; setTrial(nt); next(nt);
+
+          setTimeout(()=>{ next(idx+1); }, 260);
+        }
+
+        function onPointerDownFactory(c){
+          return (e)=>{
+            try{ e.preventDefault(); e.stopPropagation(); }catch(_e){}
+            ignoreClickUntil.current = performance.now() + 800;
+            answer(c);
+          };
+        }
+        function onClickFactory(c){
+          return (e)=>{
+            if(performance.now() < ignoreClickUntil.current) return;
+            answer(c);
+          };
         }
 
         return h('div', {className:'grid place-items-center gap-6'},
@@ -394,12 +442,20 @@
           ),
           stim ? h('div', {className: cls('text-5xl font-bold', stim.ink.css)}, stim.word.name) : null,
           h('div', {className:'w-full max-w-xl grid gap-3'},
-            h('div', {className:'flex flex-wrap justify-center gap-2'},
-              opts.map(c => h('button', {
-                key: c.name,
-                onClick: ()=>answer(c),
-                className:'rounded-xl border px-4 py-2 min-w-[6rem]'
-              }, c.name))
+            // Opciones: equidistantes (2 columnas) + feedback táctil al presionar
+            h('div', {className:'mx-auto w-full max-w-sm grid grid-cols-2 gap-8'},
+              opts.map(c => {
+                const isPressed = pressed && pressed.trial===trial && pressed.name===c.name;
+                return h('button', {
+                  key: c.name,
+                  onPointerDown: onPointerDownFactory(c),
+                  onClick: onClickFactory(c),
+                  className: cls(
+                    'w-full rounded-2xl border px-6 py-4 text-base font-medium select-none touch-manipulation transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
+                    isPressed ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white'
+                  )
+                }, c.name);
+              })
             )
           ),
           h('div', {className:'text-sm text-slate-500'}, `Ensayo ${trial+1} / ${N_TRIALS}`)
@@ -414,6 +470,15 @@
         const [round,setRound]=useState(0);
         const [pegs,setPegs]=useState([[],[],[]]);
         const [sel,setSel]=useState(null);
+        const [pressedPeg,setPressedPeg]=useState(null);
+        const pressedPegT=useRef(null);
+
+        useEffect(()=>()=>{ if(pressedPegT.current) clearTimeout(pressedPegT.current); },[]);
+        function flashPeg(pi){
+          setPressedPeg(pi);
+          if(pressedPegT.current) clearTimeout(pressedPegT.current);
+          pressedPegT.current = setTimeout(()=>setPressedPeg(null), 320);
+        }
 
         function initRound(r){
           const from=roundsRef.current[r][0];
@@ -427,6 +492,7 @@
         function colorFor(d){ if(d===3) return '#eab308'; if(d===2) return '#16a34a'; return '#2563eb'; }
 
         function click(pi){
+          flashPeg(pi);
           if(sel===null){ if(pegs[pi].length===0) return; setSel(pi); return; }
           if(sel===pi){ setSel(null); return; }
           const from=sel, to=pi;
@@ -460,10 +526,7 @@
         const reqTo=roundsRef.current[round] ? roundsRef.current[round][1] : 2;
 
         return h('div', {className:'space-y-4'},
-          h('div', {className:'text-slate-600 text-base text-center'},
-            'Selecciona ', h('b', null, 'origen'), ' y luego ', h('b', null, 'destino'), '. Debes mover ', h('b', null, 'todos'), ' los discos desde ',
-            h('b', null, `T${reqFrom+1}`), ' hasta ', h('b', null, `T${reqTo+1}`), '.'
-          ),
+          // (Sin texto de instrucción arriba; sólo objetivo)
           h('div', {className:'text-center text-sm text-slate-500'},
             `Ronda ${round+1} / ${roundsRef.current.length} — Objetivo: `,
             h('b', null, `T${reqFrom+1} → T${reqTo+1}`)
@@ -473,7 +536,7 @@
               pegs.map((peg,pi)=>h('button', {
                 key: pi,
                 onClick: ()=>click(pi),
-                className: cls('relative h-56 w-60 rounded-xl bg-white grid place-items-end border border-slate-200', sel===pi ? 'border-2 border-slate-900' : ''),
+                className: cls('relative h-56 w-60 rounded-xl grid place-items-end border border-slate-200 transition select-none touch-manipulation active:bg-slate-50', sel===pi ? 'border-2 border-slate-900 bg-slate-50' : 'bg-white', pressedPeg===pi ? 'bg-slate-200 ring-2 ring-slate-300 shadow-sm' : ''),
                 title: `Torre ${pi+1}`
               },
                 h('div', {className:'absolute left-1/2 -translate-x-1/2 bottom-6 w-1 bg-slate-300 h-40'}),
@@ -501,7 +564,16 @@
         const [seq,setSeq]=useState([]);
         const [flash,setFlash]=useState(null);
         const [resp,setResp]=useState([]);
+        const [flashKey,setFlashKey]=useState(null);
+        const flashT=useRef(null);
         const timerRef=useRef(null);
+
+        useEffect(()=>()=>{ if(flashT.current) clearTimeout(flashT.current); },[]);
+        function flashBtn(v){
+          setFlashKey(v);
+          if(flashT.current) clearTimeout(flashT.current);
+          flashT.current = setTimeout(()=>setFlashKey(null), 160);
+        }
         const inputStartRef=useRef(null);
         const trialRef=useRef(props.startAt||0);
 
@@ -510,8 +582,17 @@
           return ()=>{ if(timerRef.current) clearInterval(timerRef.current); };
         },[props.startAt]);
 
-        function shuffle(a){ return a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]); }
-        function pickSeq(len){ const cells=Array.from({length:9},(_,i)=>i); return shuffle(cells).slice(0,len); }
+        function shuffleLocal(a){
+          for(let i=a.length-1;i>0;i--){
+            const j=Math.floor(Math.random()*(i+1));
+            const tmp=a[i]; a[i]=a[j]; a[j]=tmp;
+          }
+          return a;
+        }
+        function pickSeq(len){
+          const cells=Array.from({length:9},(_,i)=>i);
+          return shuffleLocal(cells).slice(0,len);
+        }
 
         function next(idx){
           if(timerRef.current) clearInterval(timerRef.current);
@@ -547,8 +628,9 @@
         }
 
         return h('div', {className:'space-y-4'},
-          h('div', {className:'text-slate-600 text-base text-center'},
-            'Repite la secuencia tocando los cuadros en el ', h('b', null, 'mismo orden'), '.'
+          h('div', {className:'w-64 mx-auto flex items-center justify-between text-sm text-slate-500'},
+            h('span', null, `Ensayo ${trial+1} / 9`),
+            h('span', {className:'whitespace-nowrap'}, `Longitud: ${seq.length ? seq.length : (3+Math.floor(trialRef.current/3))}`)
           ),
           h('div', {className:'grid grid-cols-3 gap-3 w-64 mx-auto'},
             Array.from({length:9},(_,i)=>{
@@ -561,8 +643,7 @@
                 className: cls('aspect-square rounded border transition-colors', clsCell)
               });
             })
-          ),
-          h('div', {className:'text-center text-sm text-slate-500'}, `Ensayo ${trial+1} / 9`)
+          )
         );
       }
 
@@ -583,15 +664,20 @@
         const inputStartRef=useRef(null);
         const trialRef=useRef(props.startAt||0);
 
+        const [flashKey,setFlashKey]=useState(null);
+        const flashT=useRef(null);
+        useEffect(()=>()=>{ if(flashT.current) clearTimeout(flashT.current); },[]);
+        function flashBtn(v){
+          setFlashKey(v);
+          if(flashT.current) clearTimeout(flashT.current);
+          flashT.current = setTimeout(()=>setFlashKey(null), 320);
+        }
+
         useEffect(()=>{ next(props.startAt||0); return ()=>{ if(timerRef.current) clearInterval(timerRef.current); }; },[props.startAt]);
 
         function randUniqueDigits(n){
-          const pool = [0,1,2,3,4,5,6,7,8,9];
-          for(let i=pool.length-1;i>0;i--){
-            const j = Math.floor(Math.random()*(i+1));
-            const tmp = pool[i]; pool[i]=pool[j]; pool[j]=tmp;
-          }
-          return pool.slice(0,n);
+          const used = new Set();
+          return pickUniqueDigitsSeq(n, used);
         }
 
         function next(idx){
@@ -613,7 +699,12 @@
           }, PER_DIGIT_MS);
         }
 
-        function backspace(){ if(phase==='input' && resp.length){ setResp(r=>r.slice(0,-1)); } }
+        function backspace(){
+          if(phase==='input' && resp.length){
+            flashBtn('back');
+            setResp(r=>r.slice(0,-1));
+          }
+        }
         function submit(rNow){
           const idx=trialRef.current;
           const dir=PLAN[idx].dir;
@@ -627,6 +718,7 @@
         }
         function pressDigit(d){
           if(phase!=='input') return;
+          flashBtn(d);
           setResp(r=>{
             const n=r.concat([d]);
             const need = PLAN[trialRef.current].len;
@@ -655,10 +747,6 @@
         const display = phase==='show' ? (flashIdx>-1 ? String(flashIdx) : ' ') : (resp.length ? resp.join('') : '');
 
         return h('div', {className:'space-y-4'},
-          h('div', {className:'text-slate-600 text-base text-center'},
-            'Recuerda la secuencia de números y repítela ',
-            dir==='forward' ? h('b', null, 'en el mismo orden') : h('b', null, 'al revés'), '.'
-          ),
           h('div', {className:'text-center text-sm text-slate-500'},
             `Ensayo ${trial+1} / ${PLAN.length} — Longitud: ${len} — Modo: ${dir==='forward'?'Directo':'Inverso'}`
           ),
@@ -666,10 +754,446 @@
             h('div', {className: cls('h-20 min-w-[12rem] grid place-items-center rounded-xl border text-3xl font-semibold', phase==='show'?'bg-slate-900 text-white':'bg-white')}, display)
           ),
           h('div', {className:'mx-auto max-w-xs grid grid-cols-3 gap-2'},
-            digits.slice(0,9).map(d=>h('button', {key:d, onClick:()=>pressDigit(d), className:'rounded-xl border py-3 text-lg'}, String(d))),
-            h('button', {onClick: backspace, className:'rounded-xl border py-3 text-sm'}, 'Borrar'),
-            h('button', {onClick: ()=>pressDigit(0), className:'rounded-xl border py-3 text-lg'}, '0'),
-            h('button', {onClick: ()=>submit(resp), className:'rounded-xl border py-3 text-sm'}, 'Listo')
+            digits.slice(0,9).map(d=>h('button', {
+                key:d,
+                onClick:()=>pressDigit(d),
+                className: cls(
+                  'rounded-xl border py-3 text-lg select-none touch-manipulation transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
+                  flashKey===d ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white',
+                  ''
+                )
+              }, String(d))),
+            h('button', {
+              onClick: backspace,
+              className: cls(
+                'rounded-xl border py-3 text-sm select-none touch-manipulation transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
+                flashKey==='back' ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white',
+                ''
+              )
+            }, 'Borrar'),
+            h('button', {
+              onClick: ()=>pressDigit(0),
+              className: cls(
+                'rounded-xl border py-3 text-lg select-none touch-manipulation transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
+                flashKey===0 ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white',
+                ''
+              )
+            }, '0'),
+            h('button', {
+              onClick: ()=>submit(resp),
+              className: 'rounded-xl border py-3 text-sm bg-white text-white border-white opacity-0 select-none touch-manipulation transition active:bg-white active:scale-100 focus:outline-none focus-visible:ring-0'
+            }, 'Listo')
+          )
+        );
+      }
+
+      // =========================================================
+      // PRÁCTICAS (sustituyen al video). NO registran datos.
+      // =========================================================
+
+      function PracticeStroop(props){
+        const COLORS=[
+          {name:'ROJO', css:'text-red-600', key:'R'},
+          {name:'AZUL', css:'text-blue-600', key:'A'}
+        ];
+        const N_TRIALS=4;
+        const schedule=useRef([].concat(Array(2).fill('word'), Array(2).fill('color'))
+          .map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]));
+
+        const [trial,setTrial]=useState(0);
+        const trialRef = useRef(0);
+
+        const [stim,setStim]=useState(null);
+        const [mode,setMode]=useState('word');
+        const [opts,setOpts]=useState([]);
+
+        const [pressed,setPressed]=useState(null); // {trial, name}
+        const pressedT=useRef(null);
+
+        const lockedRef = useRef(false);
+        const ignoreClickUntil = useRef(0);
+
+        useEffect(()=>()=>{ if(pressedT.current) clearTimeout(pressedT.current); },[]);
+        function flashChoice(idx, name){
+          setPressed({trial: idx, name});
+          if(pressedT.current) clearTimeout(pressedT.current);
+          pressedT.current = setTimeout(()=>setPressed(null), 220);
+        }
+
+        function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+        function mkStim(){
+          let w=pick(COLORS), i=pick(COLORS);
+          while(i.name===w.name){ i=pick(COLORS); }
+          return {word:w, ink:i};
+        }
+
+        useEffect(()=>{ next(0); },[]);
+
+        function next(idx){
+          if(idx>=N_TRIALS){ props.onDone(); return; }
+
+          trialRef.current = idx;
+          setTrial(idx);
+          setPressed(null);
+
+          const m = schedule.current[idx];
+          const s = mkStim();
+          const correctOpt = m==='word' ? s.word : s.ink;
+          const wrongOpt = COLORS.find(c => c.name !== correctOpt.name);
+          const shuffled = Math.random() < 0.5 ? [correctOpt, wrongOpt] : [wrongOpt, correctOpt];
+
+          setMode(m);
+          setStim(s);
+          setOpts(shuffled);
+
+          lockedRef.current = false;
+        }
+
+        function answer(sel){
+          if(lockedRef.current) return;
+          lockedRef.current = true;
+
+          const idx = trialRef.current;
+          flashChoice(idx, sel.name);
+
+          setTimeout(()=>{ next(idx+1); }, 260);
+        }
+
+        function onPointerDownFactory(c){
+          return (e)=>{
+            try{ e.preventDefault(); e.stopPropagation(); }catch(_e){}
+            ignoreClickUntil.current = performance.now() + 800;
+            answer(c);
+          };
+        }
+        function onClickFactory(c){
+          return (e)=>{
+            if(performance.now() < ignoreClickUntil.current) return;
+            answer(c);
+          };
+        }
+
+        return h('div', {className:'grid place-items-center gap-6'},
+          h('div', {className:'text-slate-600 text-base text-center'},
+            mode==='word'
+              ? h(F, null, '¿Qué ', h('b', null, 'palabra'), ' lees?')
+              : h(F, null, '¿Qué ', h('b', null, 'color'), ' ves?')
+          ),
+          stim ? h('div', {className: cls('text-5xl font-bold', stim.ink.css)}, stim.word.name) : null,
+          h('div', {className:'w-full max-w-xl grid gap-3'},
+            h('div', {className:'mx-auto w-full max-w-sm grid grid-cols-2 gap-8'},
+              opts.map(c => {
+                const isPressed = pressed && pressed.trial===trial && pressed.name===c.name;
+                return h('button', {
+                  key: c.name,
+                  onPointerDown: onPointerDownFactory(c),
+                  onClick: onClickFactory(c),
+                  className: cls(
+                    'w-full rounded-2xl border px-6 py-4 text-base font-medium select-none touch-manipulation transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
+                    isPressed ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white'
+                  )
+                }, c.name);
+              })
+            )
+          ),
+          h('div', {className:'text-sm text-slate-500'}, `Ensayo ${trial+1} / ${N_TRIALS}`)
+        );
+      }
+
+      function PracticeHanoi(props){
+        const N=2;
+        const roundsRef=useRef([[0,2],[2,0],[1,0],[0,1]]);
+        const [round,setRound]=useState(0);
+        const [pegs,setPegs]=useState([[],[],[]]);
+        const [sel,setSel]=useState(null);
+        const [pressedPeg,setPressedPeg]=useState(null);
+        const pressedPegT=useRef(null);
+
+        useEffect(()=>()=>{ if(pressedPegT.current) clearTimeout(pressedPegT.current); },[]);
+        function flashPeg(pi){
+          setPressedPeg(pi);
+          if(pressedPegT.current) clearTimeout(pressedPegT.current);
+          pressedPegT.current = setTimeout(()=>setPressedPeg(null), 320);
+        }
+
+        function initRound(r){
+          const from=roundsRef.current[r][0];
+          const start=[[],[],[]];
+          start[from]=Array.from({length:N},(_,i)=>N-i);
+          setPegs(start); setSel(null); setRound(r);
+        }
+        useEffect(()=>{ initRound(0); },[]);
+
+        function canPlace(d,t){ const top=t[t.length-1]; return top===undefined || top>d; }
+        function colorFor(d){ if(d===2) return '#16a34a'; return '#2563eb'; }
+
+        function click(pi){
+          flashPeg(pi);
+          if(sel===null){ if(pegs[pi].length===0) return; setSel(pi); return; }
+          if(sel===pi){ setSel(null); return; }
+          const from=sel, to=pi;
+          const src=pegs[from]; if(src.length===0){ setSel(null); return; }
+          const disc=src[src.length-1];
+          const valid=canPlace(disc,pegs[to]);
+          if(!valid){ setSel(null); return; }
+
+          setPegs(p=>{
+            const n=p.map(a=>a.slice());
+            n[from].pop(); n[to].push(disc);
+            const reqTo=roundsRef.current[round][1];
+            const done = n[reqTo].length===N;
+            if(done){
+              setTimeout(()=>{
+                if(round+1 < roundsRef.current.length){ initRound(round+1); }
+                else { props.onDone(); }
+              }, 350);
+            }
+            return n;
+          });
+          setSel(null);
+        }
+
+        const reqFrom=roundsRef.current[round] ? roundsRef.current[round][0] : 0;
+        const reqTo=roundsRef.current[round] ? roundsRef.current[round][1] : 2;
+
+        return h('div', {className:'space-y-4'},
+          h('div', {className:'text-center text-sm text-slate-500'},
+            `Ronda ${round+1} / ${roundsRef.current.length} — Objetivo: `,
+            h('b', null, `T${reqFrom+1} → T${reqTo+1}`)
+          ),
+          h('div', {className:'w-full overflow-hidden'},
+            h('div', {className:'flex flex-nowrap gap-4 justify-center items-end mx-auto'},
+              pegs.map((peg,pi)=>h('button', {
+                key: pi,
+                onClick: ()=>click(pi),
+                className: cls('relative h-56 w-60 rounded-xl grid place-items-end border border-slate-200 transition select-none touch-manipulation active:bg-slate-50', sel===pi ? 'border-2 border-slate-900 bg-slate-50' : 'bg-white', pressedPeg===pi ? 'bg-slate-200 ring-2 ring-slate-300 shadow-sm' : ''),
+                title: `Torre ${pi+1}`
+              },
+                h('div', {className:'absolute left-1/2 -translate-x-1/2 bottom-6 w-1 bg-slate-300 h-40'}),
+                h('div', {className:'absolute left-3 right-3 bottom-4 h-2 bg-slate-300 rounded'}),
+                h('div', {className:'w-full flex flex-col-reverse items-center gap-1 pb-6'},
+                  peg.map((d,idx)=>h('div', {
+                    key: idx,
+                    className:'h-6 rounded text-[10px] text-white grid place-items-center',
+                    style:{width:`${45+d*18}%`, background: colorFor(d)}
+                  }, String(d)))
+                ),
+                h('div', {className:'absolute top-2 right-2 text-[10px] text-slate-400'}, `T${pi+1}`)
+              ))
+            )
+          )
+        );
+      }
+
+      function PracticeCorsi(props){
+        const PER_CELL_MS = 1100;
+        const PLAN = makeCorsiPracticePlan(); // [2,2,3,3]
+
+        const planSeqsRef = useRef(null);
+        if(!planSeqsRef.current){
+          const used = new Set();
+          planSeqsRef.current = PLAN.map(len => pickUniqueCorsiSeq(len, used));
+        }
+
+        const [trial,setTrial]=useState(0);
+        const [phase,setPhase]=useState('show');
+        const [seq,setSeq]=useState([]);
+        const [flash,setFlash]=useState(null);
+        const [resp,setResp]=useState([]);
+        const [flashKey,setFlashKey]=useState(null);
+        const flashT=useRef(null);
+        const timerRef=useRef(null);
+        const trialRef=useRef(0);
+
+        useEffect(()=>()=>{ if(flashT.current) clearTimeout(flashT.current); },[]);
+        function flashBtn(v){
+          setFlashKey(v);
+          if(flashT.current) clearTimeout(flashT.current);
+          flashT.current = setTimeout(()=>setFlashKey(null), 160);
+        }
+
+        useEffect(()=>{
+          next(0);
+          return ()=>{ if(timerRef.current) clearInterval(timerRef.current); };
+        },[]);
+
+        function next(idx){
+          if(timerRef.current) clearInterval(timerRef.current);
+          if(idx>=PLAN.length){ props.onDone(); return; }
+          trialRef.current=idx; setTrial(idx);
+          const s = planSeqsRef.current[idx];
+          setSeq(s); setResp([]); setPhase('show');
+          let i=0;
+          timerRef.current=setInterval(()=>{
+            setFlash(s[i]);
+            i++;
+            if(i>=s.length){
+              clearInterval(timerRef.current);
+              timerRef.current=null;
+              setTimeout(()=>{ setFlash(null); setPhase('input'); }, 600);
+            }
+          }, PER_CELL_MS);
+        }
+
+        function press(i){
+          if(phase!=='input') return;
+          const r = resp.concat([i]);
+          setResp(r);
+          if(r.length===seq.length){
+            // NO registramos. Sólo avanzamos.
+            setPhase('final');
+            setTimeout(()=>{ next(trialRef.current+1); }, 300);
+          }
+        }
+
+        return h('div', {className:'space-y-4'},
+          h('div', {className:'w-64 mx-auto flex items-center justify-between text-sm text-slate-500'},
+          h('span', null, `Ensayo ${trial+1} / ${PLAN.length}`),
+          h('span', {className:'whitespace-nowrap'}, `Longitud: ${seq.length ? seq.length : PLAN[trialRef.current]}`)
+        ),
+          h('div', {className:'grid grid-cols-3 gap-3 w-64 mx-auto'},
+            Array.from({length:9},(_,i)=>{
+              const show = phase==='show' && flash===i;
+              const pressed = (phase==='input' || phase==='final') && resp.includes(i);
+              const clsCell = show ? 'bg-slate-900 border-slate-900' : (pressed ? 'bg-emerald-500 border-emerald-600' : 'bg-white border-slate-300');
+              return h('button', {
+                key: i,
+                onClick: ()=>press(i),
+                className: cls('aspect-square rounded border transition-colors', clsCell)
+              });
+            })
+          )
+        );
+      }
+
+      function PracticeDigitSpan(props){
+        const PLAN = makeDigitPracticePlan();
+        const PER_DIGIT_MS = 1100;
+        const GAP_AFTER_SEQUENCE_MS = 600;
+
+        const planSeqsRef = useRef(null);
+        if(!planSeqsRef.current){
+          const used = new Set();
+          planSeqsRef.current = PLAN.map(p => pickUniqueDigitsSeq(p.len, used));
+        }
+
+        const [trial,setTrial]=useState(0);
+        const [phase,setPhase]=useState('show');
+        const [seq,setSeq]=useState([]);
+        const [flashIdx,setFlashIdx]=useState(-1);
+        const [resp,setResp]=useState([]);
+        const [flashKey,setFlashKey]=useState(null);
+        const flashT=useRef(null);
+        const timerRef=useRef(null);
+        const trialRef=useRef(0);
+
+        useEffect(()=>()=>{ if(flashT.current) clearTimeout(flashT.current); },[]);
+        function flashBtn(v){
+          setFlashKey(v);
+          if(flashT.current) clearTimeout(flashT.current);
+          flashT.current = setTimeout(()=>setFlashKey(null), 320);
+        }
+
+        useEffect(()=>{ next(0); return ()=>{ if(timerRef.current) clearInterval(timerRef.current); }; },[]);
+
+        function next(idx){
+          if(timerRef.current) clearInterval(timerRef.current);
+          if(idx>=PLAN.length){ props.onDone(); return; }
+          trialRef.current=idx; setTrial(idx);
+          const s = planSeqsRef.current[idx];
+          setSeq(s); setResp([]); setPhase('show'); setFlashIdx(-1);
+          let i=0;
+          timerRef.current=setInterval(()=>{
+            setFlashIdx(s[i]);
+            i++;
+            if(i>=s.length){
+              clearInterval(timerRef.current);
+              timerRef.current=null;
+              setTimeout(()=>{ setFlashIdx(-1); setPhase('input'); }, GAP_AFTER_SEQUENCE_MS);
+            }
+          }, PER_DIGIT_MS);
+        }
+
+        function backspace(){
+          if(phase==='input' && resp.length){
+            flashBtn('back');
+            setResp(r=>r.slice(0,-1));
+          }
+        }
+
+        function submit(){
+          // NO registramos. Sólo avanzamos.
+          setPhase('final');
+          setTimeout(()=>{ next(trialRef.current+1); }, 400);
+        }
+
+        function pressDigit(d){
+          if(phase!=='input') return;
+          flashBtn(d);
+          setResp(r=>{
+            const n=r.concat([d]);
+            const need = PLAN[trialRef.current].len;
+            if(n.length===need) submit();
+            return n;
+          });
+        }
+
+        useEffect(()=>{
+          const onKey=(e)=>{
+            if(!isFinite(e.key)){
+              if(e.key==='Backspace'){ backspace(); }
+              if(e.key==='Enter'){ if(phase==='input') submit(); }
+              return;
+            }
+            const d = Number(e.key);
+            if(d>=0 && d<=9) pressDigit(d);
+          };
+          document.addEventListener('keydown', onKey);
+          return ()=>document.removeEventListener('keydown', onKey);
+        },[phase]);
+
+        const dir = (PLAN[trial]||{dir:'forward'}).dir;
+        const len = (PLAN[trial]||{len:2}).len;
+        const digits = [1,2,3,4,5,6,7,8,9,0];
+        const display = phase==='show' ? (flashIdx>-1 ? String(flashIdx) : ' ') : (resp.length ? resp.join('') : '');
+
+        return h('div', {className:'space-y-4'},
+          h('div', {className:'text-center text-sm text-slate-500'},
+            `Ensayo ${trial+1} / ${PLAN.length} — Longitud: ${len} — Modo: ${dir==='forward'?'Directo':'Inverso'}`
+          ),
+          h('div', {className:'grid place-items-center'},
+            h('div', {className: cls('h-20 min-w-[12rem] grid place-items-center rounded-xl border text-3xl font-semibold', phase==='show'?'bg-slate-900 text-white':'bg-white')}, display)
+          ),
+          h('div', {className:'mx-auto max-w-xs grid grid-cols-3 gap-2'},
+            digits.slice(0,9).map(d=>h('button', {
+              key:d,
+              onClick:()=>pressDigit(d),
+              className: cls(
+                'rounded-xl border py-3 text-lg select-none touch-manipulation transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
+                flashKey===d ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white',
+                ''
+              )
+            }, String(d))),
+            h('button', {
+              onClick: backspace,
+              className: cls(
+                'rounded-xl border py-3 text-sm select-none touch-manipulation transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
+                flashKey==='back' ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white',
+                ''
+              )
+            }, 'Borrar'),
+            h('button', {
+              onClick: ()=>pressDigit(0),
+              className: cls(
+                'rounded-xl border py-3 text-lg select-none touch-manipulation transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
+                flashKey===0 ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white',
+                ''
+              )
+            }, '0'),
+            h('button', {
+              onClick: ()=>submit(),
+              className: 'rounded-xl border py-3 text-sm bg-white text-white border-white opacity-0 select-none touch-manipulation transition active:bg-white active:scale-100 focus:outline-none focus-visible:ring-0'
+            }, 'Listo')
           )
         );
       }
@@ -758,9 +1282,13 @@
         const saved = loadSave();
         const startI = typeof saved.runIndex==='number' ? saved.runIndex : 0;
         const [i,setI]=useState(startI);
+
         const tasks = useMemo(()=>({stroop:Stroop, hanoi:Hanoi, corsi:Corsi, digit:DigitSpan}),[]);
+        const practices = useMemo(()=>({stroop:PracticeStroop, hanoi:PracticeHanoi, corsi:PracticeCorsi, digit:PracticeDigitSpan}),[]);
+
         const key = props.order[i];
         const Comp = tasks[key];
+        const PracticeComp = practices[key];
 
         const progress = useMemo(()=>{
           const cnt={};
@@ -778,50 +1306,76 @@
 
         const progressKey = key==='digit' ? 'digit_span' : key;
         const alreadyStarted = (progress[progressKey]||0) > 0;
-        const [showIntro, setShowIntro] = useState(!alreadyStarted);
 
+        // stage: 'practice' → 'ready' → 'task'
+        const [stage, setStage] = useState(alreadyStarted ? 'task' : 'practice');
         useEffect(()=>{
-          const startedNow = (progress[progressKey]||0) > 0;
-          setShowIntro(!startedNow);
-        }, [i, progressKey]);
+          setStage(alreadyStarted ? 'task' : 'practice');
+        }, [i, alreadyStarted]);
 
         const taskMeta = useMemo(()=>({
           stroop: {
             title: 'Stroop',
-            help: 'En esta tarea responde, por favor, a la palabra que lees o al color que ves según se indique en la pregunta. No dudes en preguntar al evaluador si tienes alguna duda.',
-            videoSrc: './videos/stroop.mp4',
+            help: 'En esta tarea responde, por favor, a la palabra que lees o al color que ves según se indique en la pregunta. No dudes en preguntar al evaluador si tienes alguna duda.'
           },
           hanoi: {
             title: 'Torre de Hanoi',
-            help: 'En esta tarea mueve, por favor, los discos desde la torre origen hacia la torre destino. Sólo se puede mover un disco a la vez y no puedes poner un disco grande sobre uno pequeño. No dudes en preguntar al evaluador si tienes alguna duda.',
-            videoSrc: './videos/hanoi.mp4',
+            help: 'En esta tarea mueve, por favor, los discos desde la torre origen hacia la torre destino. Sólo se puede mover un disco a la vez y no puedes poner un disco grande sobre uno pequeño. No dudes en preguntar al evaluador si tienes alguna duda.'
           },
           corsi: {
             title: 'Corsi 3×3',
-            help: 'En esta tarea observa, por favor, la secuencia de cuadros iluminados y repítela en el mismo orden. No dudes en preguntar al evaluador si tienes alguna duda.',
-            videoSrc: './videos/corsi.mp4',
+            help: 'En esta tarea observa, por favor, la secuencia de cuadros iluminados y repítela en el mismo orden. No dudes en preguntar al evaluador si tienes alguna duda.'
           },
           digit: {
             title: 'Dígitos',
-            help: 'En esta tarea observa, por favor, la secuencia de números y repítela en el orden que se indica: mismo orden (directo) o al revés (inverso). No dudes en preguntar al evaluador si tienes alguna duda.',
-            videoSrc: './videos/digit.mp4',
+            help: 'En esta tarea observa, por favor, la secuencia de números y repítela en el orden que se indica: mismo orden (directo) o al revés (inverso). No dudes en preguntar al evaluador si tienes alguna duda.'
           }
         }),[]);
 
-        const meta = taskMeta[key] || {title:String(key), help:'', videoSrc:''};
+        const meta = taskMeta[key] || {title:String(key), help:''};
 
         return h('section', {className:'space-y-4'},
           h('div', {className:'flex items-center justify-between text-sm text-slate-500'},
             h('span', null, `Tarea ${i+1} / ${props.order.length}`),
             h('button', {onClick: props.onRequestCancel, className:'rounded-lg border px-3 py-1 text-xs'}, 'Cancelar evaluación')
           ),
-          h('div', {className:'rounded-2xl border bg-white p-4'},
-            showIntro
-              ? h(TaskIntro, {title: meta.title, help: meta.help, videoSrc: meta.videoSrc, onStart: ()=>setShowIntro(false)})
-              : (Comp
+
+          h('div', {className:'rounded-2xl border bg-white p-4 space-y-4'},
+            h('div', {className:'space-y-1'},
+              h('h3', {className:'text-lg font-semibold'}, meta.title),
+              (stage==='practice')
+                ? h('p', {className:'text-sm text-slate-600 leading-relaxed'},
+                    meta.help,
+                    ' ',
+                    h('span', {className:'font-semibold text-slate-700'}, 'Práctica breve.'),
+                    ' Antes de iniciar la tarea real, realiza esta práctica. Al terminar, presiona ',
+                    h('b', null, 'Iniciar'),
+                    ' para empezar la tarea.'
+                  )
+                : null
+            ),
+
+            stage==='practice'
+              ? (PracticeComp ? h(PracticeComp, {onDone: ()=>setStage('ready')}) : h('div', {className:'text-sm text-slate-600'}, 'Práctica no configurada.'))
+              : null,
+
+            stage==='ready'
+              ? h('div', {className:'rounded-xl border bg-slate-50 p-4'},
+                  h('div', {className:'text-sm text-slate-700'},
+                    h('b', null, 'Práctica completada.'), ' Cuando estés listo, inicia la tarea real.'
+                  ),
+                  h('div', {className:'pt-4 flex justify-end'},
+                    h('button', {onClick: ()=>setStage('task'), className:'rounded-xl bg-slate-900 text-white px-4 py-2'}, 'Iniciar')
+                  )
+                )
+              : null,
+
+            stage==='task'
+              ? (Comp
                   ? h(Comp, {onTrial: props.onTrial, onDone: handleDone, startAt: (progress[progressKey]||0)})
                   : h('div', null, `No encontrada: ${String(key)}`)
                 )
+              : null
           )
         );
       }
@@ -994,8 +1548,14 @@
           console.assert(movesScore && movesScore.moves===2, 'Hanoi moves debe contar correct:true');
           const r1 = getRunId(); resetRunId(); const r2 = newRunId();
           console.assert(r1!==r2, 'newRunId debe generar un runId distinto tras reset');
-          // Timing: validación explícita de intención (ms)
           console.assert(1100 === 1100, 'Timing base 1100 ms (1.1 s)');
+          console.assert(Array.isArray(makeCorsiPracticePlan()) && makeCorsiPracticePlan().join(',')==='2,2,3,3', 'Plan práctica Corsi debe ser 2,2,3,3');
+          const dp = makeDigitPracticePlan();
+          console.assert(dp.length===4 && dp[0].len===2 && dp[2].dir==='backward', 'Plan práctica Dígitos debe tener 4 ensayos (2 forward, 2 backward)');
+          console.assert(typeof PracticeStroop === 'function', 'PracticeStroop debe existir');
+          console.assert(typeof PracticeHanoi === 'function', 'PracticeHanoi debe existir');
+          console.assert(typeof PracticeCorsi === 'function', 'PracticeCorsi debe existir');
+          console.assert(typeof PracticeDigitSpan === 'function', 'PracticeDigitSpan debe existir');
           console.log('Tests básicos OK');
         }catch(e){ console.warn('Tests básicos con aviso', e); }
       })();
@@ -1010,4 +1570,3 @@
   </script>
 </body>
 </html>
-<!-- canvas: reactivado -->
