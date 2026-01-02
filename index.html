@@ -222,7 +222,6 @@
           const key = JSON.stringify(s);
           if(!used.has(key)) { used.add(key); return s; }
         }
-        // fallback (muy improbable)
         const s = cells.slice(0,len);
         used.add(JSON.stringify(s));
         return s;
@@ -265,7 +264,7 @@
                 h('div', {className:'flex flex-col sm:flex-row sm:items-center gap-4 pt-2'},
                   h('button', {onClick: props.onStart, className:'rounded-2xl bg-slate-900 text-white px-8 py-4 text-base font-semibold shadow-sm'}, 'Iniciar'),
                   h('div', {className:'text-[11px] leading-snug text-slate-500'},
-                    `Copyright © ${year} Danny Sebastian Ordoñez Alberca y José Luis Vílchez Tornero. No part of this repository may be copied, modified, distributed, or used for commercial, academic, or clinical purposes without explicit written permission from the author.`
+                    `Copyright © ${year} Danny Sebastian Ordoñez Alberca y Jose Luis Vilchez Tornero. No part of this repository may be copied, modified, distributed, or used for commercial, academic, or clinical purposes without explicit written permission from the author.`
                   )
                 )
               )
@@ -278,7 +277,8 @@
         const [ok,setOk]=useState(false);
         return h('section', {className:'space-y-4'},
           h('h2', {className:'text-lg font-semibold'}, 'Consentimiento informado'),
-          h('div', {className:'rounded-2xl border p-4 bg-white text-sm leading-relaxed text-slate-700 max-h-64 overflow-auto'},
+          // Texto justificado (sin tokens corruptos)
+          h('div', {className:'rounded-2xl border p-4 bg-white text-base leading-relaxed text-slate-700 max-h-64 overflow-auto text-justify'},
             h('p', null,
               h('b', null, 'Propósito:'),
               ' evaluar funciones cognitivas como ',
@@ -526,7 +526,6 @@
         const reqTo=roundsRef.current[round] ? roundsRef.current[round][1] : 2;
 
         return h('div', {className:'space-y-4'},
-          // (Sin texto de instrucción arriba; sólo objetivo)
           h('div', {className:'text-center text-sm text-slate-500'},
             `Ronda ${round+1} / ${roundsRef.current.length} — Objetivo: `,
             h('b', null, `T${reqFrom+1} → T${reqTo+1}`)
@@ -564,16 +563,7 @@
         const [seq,setSeq]=useState([]);
         const [flash,setFlash]=useState(null);
         const [resp,setResp]=useState([]);
-        const [flashKey,setFlashKey]=useState(null);
-        const flashT=useRef(null);
         const timerRef=useRef(null);
-
-        useEffect(()=>()=>{ if(flashT.current) clearTimeout(flashT.current); },[]);
-        function flashBtn(v){
-          setFlashKey(v);
-          if(flashT.current) clearTimeout(flashT.current);
-          flashT.current = setTimeout(()=>setFlashKey(null), 160);
-        }
         const inputStartRef=useRef(null);
         const trialRef=useRef(props.startAt||0);
 
@@ -628,6 +618,7 @@
         }
 
         return h('div', {className:'space-y-4'},
+          // Ensayo + longitud arriba (longitud del ensayo actual, no el siguiente)
           h('div', {className:'w-64 mx-auto flex items-center justify-between text-sm text-slate-500'},
             h('span', null, `Ensayo ${trial+1} / 9`),
             h('span', {className:'whitespace-nowrap'}, `Longitud: ${seq.length ? seq.length : (3+Math.floor(trialRef.current/3))}`)
@@ -759,26 +750,24 @@
                 onClick:()=>pressDigit(d),
                 className: cls(
                   'rounded-xl border py-3 text-lg select-none touch-manipulation transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
-                  flashKey===d ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white',
-                  ''
+                  flashKey===d ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white'
                 )
               }, String(d))),
             h('button', {
               onClick: backspace,
               className: cls(
                 'rounded-xl border py-3 text-sm select-none touch-manipulation transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
-                flashKey==='back' ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white',
-                ''
+                flashKey==='back' ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white'
               )
             }, 'Borrar'),
             h('button', {
               onClick: ()=>pressDigit(0),
               className: cls(
                 'rounded-xl border py-3 text-lg select-none touch-manipulation transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
-                flashKey===0 ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white',
-                ''
+                flashKey===0 ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white'
               )
             }, '0'),
+            // Botón invisible (sin feedback) para no distraer
             h('button', {
               onClick: ()=>submit(resp),
               className: 'rounded-xl border py-3 text-sm bg-white text-white border-white opacity-0 select-none touch-manipulation transition active:bg-white active:scale-100 focus:outline-none focus-visible:ring-0'
@@ -1000,17 +989,8 @@
         const [seq,setSeq]=useState([]);
         const [flash,setFlash]=useState(null);
         const [resp,setResp]=useState([]);
-        const [flashKey,setFlashKey]=useState(null);
-        const flashT=useRef(null);
         const timerRef=useRef(null);
         const trialRef=useRef(0);
-
-        useEffect(()=>()=>{ if(flashT.current) clearTimeout(flashT.current); },[]);
-        function flashBtn(v){
-          setFlashKey(v);
-          if(flashT.current) clearTimeout(flashT.current);
-          flashT.current = setTimeout(()=>setFlashKey(null), 160);
-        }
 
         useEffect(()=>{
           next(0);
@@ -1048,9 +1028,9 @@
 
         return h('div', {className:'space-y-4'},
           h('div', {className:'w-64 mx-auto flex items-center justify-between text-sm text-slate-500'},
-          h('span', null, `Ensayo ${trial+1} / ${PLAN.length}`),
-          h('span', {className:'whitespace-nowrap'}, `Longitud: ${seq.length ? seq.length : PLAN[trialRef.current]}`)
-        ),
+            h('span', null, `Ensayo ${trial+1} / ${PLAN.length}`),
+            h('span', {className:'whitespace-nowrap'}, `Longitud: ${seq.length ? seq.length : PLAN[trialRef.current]}`)
+          ),
           h('div', {className:'grid grid-cols-3 gap-3 w-64 mx-auto'},
             Array.from({length:9},(_,i)=>{
               const show = phase==='show' && flash===i;
@@ -1170,26 +1150,24 @@
               onClick:()=>pressDigit(d),
               className: cls(
                 'rounded-xl border py-3 text-lg select-none touch-manipulation transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
-                flashKey===d ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white',
-                ''
+                flashKey===d ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white'
               )
             }, String(d))),
             h('button', {
               onClick: backspace,
               className: cls(
                 'rounded-xl border py-3 text-sm select-none touch-manipulation transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
-                flashKey==='back' ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white',
-                ''
+                flashKey==='back' ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white'
               )
             }, 'Borrar'),
             h('button', {
               onClick: ()=>pressDigit(0),
               className: cls(
                 'rounded-xl border py-3 text-lg select-none touch-manipulation transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
-                flashKey===0 ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white',
-                ''
+                flashKey===0 ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white'
               )
             }, '0'),
+            // Botón invisible (sin feedback) para no distraer
             h('button', {
               onClick: ()=>submit(),
               className: 'rounded-xl border py-3 text-sm bg-white text-white border-white opacity-0 select-none touch-manipulation transition active:bg-white active:scale-100 focus:outline-none focus-visible:ring-0'
@@ -1347,10 +1325,10 @@
                 ? h('p', {className:'text-sm text-slate-600 leading-relaxed'},
                     meta.help,
                     ' ',
-                    h('span', {className:'font-semibold text-slate-700'}, 'Práctica breve.'),
-                    ' Antes de iniciar la tarea real, realiza esta práctica. Al terminar, presiona ',
+                    h('span', {className:'font-semibold text-slate-700'}, 'Práctica breve:'),
+                    ' A continuación, tendrás una tarea de práctica que te permitirá familiarizarte con la tarea real que realizarás a posteriori. Al terminar esta prueba de práctica, por favor, presiona ',
                     h('b', null, 'Iniciar'),
-                    ' para empezar la tarea.'
+                    ' para empezar la tarea real.'
                   )
                 : null
             ),
@@ -1362,8 +1340,9 @@
             stage==='ready'
               ? h('div', {className:'rounded-xl border bg-slate-50 p-4'},
                   h('div', {className:'text-sm text-slate-700'},
-                    h('b', null, 'Práctica completada.'), ' Cuando estés listo, inicia la tarea real.'
+                    h('b', null, 'Práctica completada:'), ' tómate un descanso y, por favor, cuando estés listo inicia la tarea real.'
                   ),
+                  // Botón más abajo
                   h('div', {className:'pt-4 flex justify-end'},
                     h('button', {onClick: ()=>setStage('task'), className:'rounded-xl bg-slate-900 text-white px-4 py-2'}, 'Iniciar')
                   )
@@ -1556,6 +1535,8 @@
           console.assert(typeof PracticeHanoi === 'function', 'PracticeHanoi debe existir');
           console.assert(typeof PracticeCorsi === 'function', 'PracticeCorsi debe existir');
           console.assert(typeof PracticeDigitSpan === 'function', 'PracticeDigitSpan debe existir');
+          // Sanity: el consentimiento debe renderizar sin tokens inválidos
+          console.assert(typeof Consent === 'function', 'Consent debe existir');
           console.log('Tests básicos OK');
         }catch(e){ console.warn('Tests básicos con aviso', e); }
       })();
