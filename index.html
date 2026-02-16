@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Evaluaciones neuropsicológicas</title>
   <link rel="icon" href="data:,">
-  <!-- Nota: en algunos previsualizadores el CDN puede fallar; si ocurre, verás un mensaje de diagnóstico. -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-50">
@@ -30,7 +29,7 @@
         box.className = 'min-h-screen p-6 grid place-items-center';
         box.innerHTML = `
           <div class="max-w-2xl w-full bg-white border rounded-2xl p-6 space-y-3">
-            <h1 class="text-xl font-semibold">No se pudo iniciar la app</h1>
+            <h1 class="text-xl font-semibold">No se pudo iniciar la la app</h1>
             <p class="text-slate-700">${msg}</p>
             ${detail ? `<pre class="text-xs bg-slate-50 border rounded-xl p-3 overflow-auto">${detail}</pre>` : ''}
             <div class="text-xs text-slate-500">
@@ -70,7 +69,6 @@
       const h = React.createElement;
       const F = React.Fragment;
 
-      // Evita el resaltado nativo de toque (iOS/Android) para que el feedback sea sólo el nuestro.
       try { document.documentElement.style.webkitTapHighlightColor = 'transparent'; } catch(e) {}
 
       // Utils --------------------------------------------------
@@ -190,6 +188,7 @@
       function buildPayload(participant,trials,status){
         return {
           runId: getRunId(),
+          groupCode: participant.groupCode || '',   // <--- código de grupo a nivel raíz
           participant,
           completedAt: new Date().toISOString(),
           status,
@@ -198,7 +197,7 @@
         };
       }
 
-      // Helpers para prácticas (para evitar repeticiones y testear intención)
+      // Helpers para prácticas
       function makeCorsiPracticePlan(){ return [2,2,3,3]; }
       function makeDigitPracticePlan(){
         return [
@@ -277,12 +276,13 @@
         const [ok,setOk]=useState(false);
         return h('section', {className:'space-y-4'},
           h('h2', {className:'text-lg font-semibold'}, 'Consentimiento informado'),
-          // Texto justificado (sin tokens corruptos)
           h('div', {className:'rounded-2xl border p-4 bg-white text-sm leading-relaxed text-slate-700 max-h-64 overflow-auto text-justify'},
             h('p', null,
-              h('b', null, 'Propósito:'),
-              ' evaluar funciones ejecutivas como ',
-              h('b', null, 'atención'), ', ', h('b', null, 'inhibición de respuestas automáticas'), ', ', h('b', null, 'planificación'), ' y ', h('b', null, 'memoria de trabajo'),
+              h('b', null, 'Propósito:'), ' evaluar funciones ejecutivas como ',
+              h('b', null, 'atención'), ', ',
+              h('b', null, 'inhibición de respuestas automáticas'), ', ',
+              h('b', null, 'planificación'), ' y ',
+              h('b', null, 'memoria de trabajo'),
               ' mediante tareas de Psicología experimental y Neuropsicología.'
             ),
             h('p', null, h('b', null, 'Duración:'), ' la ejecución de las tareas tardará entre 8–12 minutos en los cuales puede tomar descansos si lo necesita.'),
@@ -359,11 +359,9 @@
         const [mode,setMode]=useState('word');
         const [opts,setOpts]=useState([]);
 
-        // Feedback sólo para la opción elegida y sólo en el ensayo actual
-        const [pressed,setPressed]=useState(null); // {trial:number, name:string}
+        const [pressed,setPressed]=useState(null);
         const pressedT=useRef(null);
 
-        // Bloqueo robusto (evita doble disparo en tablets)
         const lockedRef = useRef(false);
         const ignoreClickUntil = useRef(0);
 
@@ -442,7 +440,6 @@
           ),
           stim ? h('div', {className: cls('text-5xl font-bold', stim.ink.css)}, stim.word.name) : null,
           h('div', {className:'w-full max-w-xl grid gap-3'},
-            // Opciones: equidistantes (2 columnas) + feedback táctil al presionar
             h('div', {className:'mx-auto w-full max-w-sm grid grid-cols-2 gap-8'},
               opts.map(c => {
                 const isPressed = pressed && pressed.trial===trial && pressed.name===c.name;
@@ -555,7 +552,6 @@
       }
 
       function Corsi(props){
-        // Duración de cada cuadro iluminado durante la fase de memorización (en ms)
         const PER_CELL_MS = 1100;
 
         const [trial,setTrial]=useState(props.startAt||0);
@@ -618,7 +614,6 @@
         }
 
         return h('div', {className:'space-y-4'},
-          // Ensayo + longitud arriba (longitud del ensayo actual, no el siguiente)
           h('div', {className:'w-64 mx-auto flex items-center justify-between text-sm text-slate-500'},
             h('span', null, `Ensayo ${trial+1} / 9`),
             h('span', {className:'whitespace-nowrap'}, `Longitud: ${seq.length ? seq.length : (3+Math.floor(trialRef.current/3))}`)
@@ -767,7 +762,6 @@
                 flashKey===0 ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white'
               )
             }, '0'),
-            // Botón invisible (sin feedback) para no distraer
             h('button', {
               onClick: ()=>submit(resp),
               className: 'rounded-xl border py-3 text-sm bg-white text-white border-white opacity-0 select-none touch-manipulation transition active:bg-white active:scale-100 focus:outline-none focus-visible:ring-0'
@@ -776,10 +770,7 @@
         );
       }
 
-      // =========================================================
-      // PRÁCTICAS (sustituyen al video). NO registran datos.
-      // =========================================================
-
+      // PRÁCTICAS (no registran datos) -------------------------
       function PracticeStroop(props){
         const COLORS=[
           {name:'ROJO', css:'text-red-600', key:'R'},
@@ -796,7 +787,7 @@
         const [mode,setMode]=useState('word');
         const [opts,setOpts]=useState([]);
 
-        const [pressed,setPressed]=useState(null); // {trial, name}
+        const [pressed,setPressed]=useState(null);
         const pressedT=useRef(null);
 
         const lockedRef = useRef(false);
@@ -976,7 +967,7 @@
 
       function PracticeCorsi(props){
         const PER_CELL_MS = 1100;
-        const PLAN = makeCorsiPracticePlan(); // [2,2,3,3]
+        const PLAN = makeCorsiPracticePlan();
 
         const planSeqsRef = useRef(null);
         if(!planSeqsRef.current){
@@ -1020,7 +1011,6 @@
           const r = resp.concat([i]);
           setResp(r);
           if(r.length===seq.length){
-            // NO registramos. Sólo avanzamos.
             setPhase('final');
             setTimeout(()=>{ next(trialRef.current+1); }, 300);
           }
@@ -1102,7 +1092,6 @@
         }
 
         function submit(){
-          // NO registramos. Sólo avanzamos.
           setPhase('final');
           setTimeout(()=>{ next(trialRef.current+1); }, 400);
         }
@@ -1167,7 +1156,6 @@
                 flashKey===0 ? 'bg-slate-300 border-slate-900 ring-2 ring-slate-400 shadow-sm' : 'bg-white'
               )
             }, '0'),
-            // Botón invisible (sin feedback) para no distraer
             h('button', {
               onClick: ()=>submit(),
               className: 'rounded-xl border py-3 text-sm bg-white text-white border-white opacity-0 select-none touch-manipulation transition active:bg-white active:scale-100 focus:outline-none focus-visible:ring-0'
@@ -1209,10 +1197,12 @@
           return m;
         },[trials]);
 
+        const groupCode = participant.groupCode || payload.groupCode || '—';
+
         return h('section', {id:'report-root', className:'space-y-4'},
           h('h2', {className:'text-lg font-semibold'}, 'Informe de resultados'),
           h('div', {className:'text-base text-slate-500'},
-            `${participant.name || 'Participante'} · ID: ${participant.idNumber || '—'} · Comunidad: ${participant.community || '—'} · F. nac.: ${participant.birthDate || '—'} · ${new Date(completedAt).toLocaleString()} · Estado: `,
+            `${participant.name || 'Participante'} · ID: ${participant.idNumber || '—'} · Comunidad: ${participant.community || '—'} · F. nac.: ${participant.birthDate || '—'} · Grupo: ${groupCode} · ${new Date(completedAt).toLocaleString()} · Estado: `,
             h('b', null, status==='cancelled' ? 'CANCELADA' : 'COMPLETADA')
           ),
           h('div', {className:'grid gap-3'},
@@ -1285,7 +1275,6 @@
         const progressKey = key==='digit' ? 'digit_span' : key;
         const alreadyStarted = (progress[progressKey]||0) > 0;
 
-        // stage: 'practice' → 'ready' → 'task'
         const [stage, setStage] = useState(alreadyStarted ? 'task' : 'practice');
         useEffect(()=>{
           setStage(alreadyStarted ? 'task' : 'practice');
@@ -1342,7 +1331,6 @@
                   h('div', {className:'text-sm text-slate-700'},
                     h('b', null, 'La práctica breve ha terminado.'), ' De ser necesario tómate un descanso y, por favor, cuando estés listo inicia la tarea.'
                   ),
-                  // Botón más abajo
                   h('div', {className:'pt-4 flex justify-end'},
                     h('button', {onClick: ()=>setStage('task'), className:'rounded-xl bg-slate-900 text-white px-4 py-2'}, 'Iniciar')
                   )
@@ -1363,19 +1351,33 @@
         const [view,setView]=useState('welcome');
         const [firstTask,setFirstTask]=useState('stroop');
         const [order,setOrder]=useState(['stroop','hanoi','corsi','digit']);
-        const [participant,setParticipant]=useState({name:'',idNumber:'',community:'',birthDate:''});
+        const [participant,setParticipant]=useState({
+          name:'',
+          idNumber:'',
+          community:'',
+          birthDate:'',
+          groupCode:''     // <--- nuevo campo: código de grupo
+        });
+        const [groupLocked,setGroupLocked]=useState(false); // bloqueado si viene por URL
         const trialsRef=useRef([]);
         const [report,setReport]=useState(null);
         const [askCancel,setAskCancel] = useState(false);
 
         const setViewDeferred = useCallback(defer(setView), []);
 
+        // Reanudación
         useEffect(()=>{
           const s = loadSave();
           if (s && s.view && s.view !== 'report'){
             const wants = confirm('Se detectó una evaluación previa sin terminar. ¿Deseas reanudarla?');
             if (wants){
-              setParticipant(s.participant || {name:'',idNumber:'',community:'',birthDate:''});
+              setParticipant(s.participant || {
+                name:'',
+                idNumber:'',
+                community:'',
+                birthDate:'',
+                groupCode:''
+              });
               setOrder(s.order || ['stroop','hanoi','corsi','digit']);
               trialsRef.current = Array.isArray(s.trials) ? s.trials : [];
               setViewDeferred(s.view || 'start');
@@ -1384,6 +1386,19 @@
             }
           }
         },[setViewDeferred]);
+
+        // Leer código de grupo desde la URL (?group=... o ?g=...) y bloquear campo
+        useEffect(()=>{
+          try{
+            const search = window.location.search || '';
+            if(!search) return;
+            const params = new URLSearchParams(search);
+            const g = (params.get('group') || params.get('g') || params.get('token') || '').trim();
+            if(!g) return;
+            setParticipant(p => Object.assign({}, p, { groupCode: g }));
+            setGroupLocked(true);
+          }catch(e){}
+        },[]);
 
         useEffect(()=>{ try{ flushOutbox(); }catch{} }, []);
         useEffect(()=>{ saveState({ view, order }); }, [view, order]);
@@ -1397,8 +1412,16 @@
         function begin(){
           resetRunId();
           newRunId();
-          if(!participant.name.trim() || !participant.idNumber.trim())
-            return alert('Ingresa nombre e ID.');
+          if(
+            !participant.name.trim() ||
+            !participant.idNumber.trim() ||
+            !participant.community.trim() ||
+            !participant.birthDate ||
+            !participant.groupCode.trim()
+          ){
+            alert('Completa todos los campos: nombre, ID, comunidad, fecha de nacimiento y código de grupo.');
+            return;
+          }
           const all=['stroop','hanoi','corsi','digit'];
           setOrder([firstTask].concat(all.filter(k=>k!==firstTask)));
           setViewDeferred('consent');
@@ -1476,6 +1499,25 @@
                     onChange:(e)=>setParticipant(p=>Object.assign({}, p, {birthDate:e.target.value}))
                   })
                 ),
+                // NUEVO: Código de grupo / token
+                h('div', {className:'grid gap-1'},
+                  h('label', {className:'text-xs text-slate-500'}, 'Código de grupo (token de acceso)'),
+                  h('input', {
+                    className: cls('rounded-xl border px-3 py-2', groupLocked ? 'bg-slate-100 cursor-not-allowed' : ''),
+                    value: participant.groupCode,
+                    readOnly: groupLocked,
+                    onChange:(e)=>{
+                      if(groupLocked) return;
+                      setParticipant(p=>Object.assign({}, p, {groupCode:e.target.value}));
+                    },
+                    placeholder:'Ejemplo: G01-LOS_ENCUENTROS'
+                  }),
+                  h('p', {className:'text-[11px] text-slate-500'},
+                    groupLocked
+                      ? 'Este código ha sido fijado por el evaluador y no puede modificarse.'
+                      : 'Este código identifica tu grupo o curso. Debe proporcionarlo el evaluador.'
+                  )
+                ),
                 h('div', {className:'grid gap-1'},
                   h('label', {className:'text-xs text-slate-500'}, 'Primera prueba'),
                   h('select', {
@@ -1508,8 +1550,6 @@
         );
       }
 
-      // --------------------------------------------------------
-      // Tests básicos (consola)
       (function runLightTests(){
         try{
           console.assert(accuracy([]) === 0, 'accuracy([]) debe ser 0');
@@ -1535,7 +1575,6 @@
           console.assert(typeof PracticeHanoi === 'function', 'PracticeHanoi debe existir');
           console.assert(typeof PracticeCorsi === 'function', 'PracticeCorsi debe existir');
           console.assert(typeof PracticeDigitSpan === 'function', 'PracticeDigitSpan debe existir');
-          // Sanity: el consentimiento debe renderizar sin tokens inválidos
           console.assert(typeof Consent === 'function', 'Consent debe existir');
           console.log('Tests básicos OK');
         }catch(e){ console.warn('Tests básicos con aviso', e); }
@@ -1543,7 +1582,6 @@
 
       ReactDOM.createRoot(document.getElementById('root')).render(h(App));
 
-      // Registrar Service Worker para carga offline
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' }).catch(console.warn);
       }
