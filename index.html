@@ -91,7 +91,7 @@
       function clearSave(){ try { localStorage.removeItem(SAVE_KEY); } catch {} }
 
       // Apps Script endpoint (fijo en HTML)
-      const DEFAULT_ENDPOINT = 'https://script.google.com/macros/s/AKfycby2PrfZvshKeIBmu64__2sBGYIxQ8oDSFc8LfhAnC0PDB6SUs2X1j4FioQvwM1tJP9TWw/exec';
+      const DEFAULT_ENDPOINT = 'https://script.google.com/macros/s/AKfycbynxM_S_VONDe5wzxHqOjF8L3wuCIEO8YpbXPzlFTqf8vydhp5prDvFMYgomiYv7JO7Xg/exec';
 
       // === OFFLINE OUTBOX + runId (para sincronizar al reconectar) ===
       function uuidv4(){ return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);}); }
