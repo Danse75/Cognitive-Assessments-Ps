@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -185,11 +185,17 @@
           return s;
         });
       }
+
+      // IMPORTANT: aquí reforzamos el groupCode
       function buildPayload(participant,trials,status){
+        // Aseguramos que groupCode esté tanto en participant como a nivel raíz
+        const part = Object.assign({}, participant, {
+          groupCode: (participant && participant.groupCode) || ''
+        });
         return {
           runId: getRunId(),
-          groupCode: participant.groupCode || '',   // <--- código de grupo a nivel raíz
-          participant,
+          groupCode: part.groupCode || '',
+          participant: part,
           completedAt: new Date().toISOString(),
           status,
           scores: computeScores(trials),
@@ -1356,9 +1362,9 @@
           idNumber:'',
           community:'',
           birthDate:'',
-          groupCode:''     // <--- nuevo campo: código de grupo
+          groupCode:''
         });
-        const [groupLocked,setGroupLocked]=useState(false); // bloqueado si viene por URL
+        const [groupLocked,setGroupLocked]=useState(false);
         const trialsRef=useRef([]);
         const [report,setReport]=useState(null);
         const [askCancel,setAskCancel] = useState(false);
